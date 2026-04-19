@@ -1,0 +1,76 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Test / coverage
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / editor
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*~
+
+# Project-specific temporary files
+temp*.edf
+*.pkl
+*.npz
+
+# Data processing outputs
+/data/processed/
+
+# Generated model export directories
+/models/export_npu/
+/models/saved_model_temp/
+/models/temp_export/
+
+# Local environment
+.env
+
+# Docker
+docker-compose.override.yml
+
+# Ignore local notebooks outputs
+*.ipynb_checkpoints
+
+# Ignore generated coverage and cache
+.python-version
