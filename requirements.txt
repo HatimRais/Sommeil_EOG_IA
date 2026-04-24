@@ -1,18 +1,11 @@
-# Signal & Data
-mne
-numpy
-pandas
-scikit-learn
+# Dépendances pour l’application Streamlit (inférence OpenVINO + MNE).
+# Utilisé pour le déploiement (ex. Streamlit Community Cloud) et exécution locale du dashboard.
+# Pour l’entraînement TensorFlow / Keras : voir requirements-train.txt
 
-# Visualisation
-matplotlib
-seaborn
-
-# Deep Learning (On utilise la version CPU pour alléger le déploiement)
-tensorflow-cpu
-
-# Inférence (Optimisé)
-openvino
-
-# Dashboard
-streamlit
+mne==1.6.0
+numpy>=1.24.3,<2.0
+pandas==2.0.0
+scikit-learn==1.2.2
+matplotlib==3.7.1
+openvino==2024.0.0
+streamlit>=1.32.0,<2

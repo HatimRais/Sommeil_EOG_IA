@@ -50,7 +50,9 @@ Sommeil_EOG_IA/
 ├── .streamlit/
 │   └── config.toml          # Thème clinique de base (overridé via CSS dynamique)
 │
-├── requirements.txt
+├── requirements.txt          # Dépendances dashboard + inférence (Cloud)
+├── requirements-train.txt    # Optionnel : TensorFlow / entraînement (local)
+├── runtime.txt               # Version Python pour Streamlit Cloud
 ├── .gitignore
 └── README.md
 ```
@@ -130,7 +132,34 @@ python -m venv .venv
 # source .venv/bin/activate     # Linux / macOS
 
 pip install -r requirements.txt
+# Optionnel — entraînement / évaluation Keras (TensorFlow) :
+# pip install -r requirements-train.txt
 ```
+
+---
+
+## ☁️ Déploiement (Streamlit Community Cloud)
+
+Le projet est prêt pour **[Streamlit Community Cloud](https://streamlit.io/cloud)** : le dashboard n’utilise que **OpenVINO + MNE + NumPy/Pandas** (`requirements.txt`), sans TensorFlow à l’exécution.
+
+### Prérequis
+
+| Élément | Détail |
+|--------|--------|
+| Dépôt | **GitHub** (public pour l’offre Community) avec le code et les poids |
+| Fichier principal | `app/dashboard.py` (à indiquer dans les paramètres de l’app) |
+| Dépendances | `requirements.txt` à la racine (détecté automatiquement) |
+| Python | `runtime.txt` fixe la branche **3.10** (modifiable sur Cloud si besoin) |
+| Modèles | Les fichiers `models/sleep_model_npu.xml` et `models/sleep_model_npu.bin` doivent être **versionnés** (ou fournis via stockage externe + script de téléchargement). Sans eux, le message *Model file not found* s’affiche. |
+| Accélération | **Pas de NPU** sur Cloud : seuls **CPU** (et éventuellement **GPU** selon l’offre) sont disponibles. Choisir **CPU** ou **AUTO** dans la barre latérale. |
+
+### Étapes rapides
+
+1. Pousser le dépôt sur GitHub (inclure `models/` si les binaires ne dépassent pas la limite du dépôt ; au-delà, utiliser [Git LFS](https://git-lfs.com/) ou héberger les poids ailleurs).
+2. Sur [share.streamlit.io](https://share.streamlit.io), **New app** → choisir le dépôt, la branche, et **Main file path** : `app/dashboard.py`.
+3. Lancer le déploiement ; le premier build peut prendre quelques minutes (téléchargement des wheels, etc.).
+
+Aucun secret n’est requis pour l’application telle quelle. Les réglages globaux par défaut sont dans [`.streamlit/config.toml`](.streamlit/config.toml).
 
 ---
 
