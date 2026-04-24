@@ -1,11 +1,20 @@
+# Signal processing / EEG-EOG
 mne==1.6.0
 
+# Calcul scientifique
 numpy==1.24.3
-
 pandas==2.0.0
-
-matplotlib==3.7.1
-
 scikit-learn==1.2.2
 
-tensorflow
+# Visualisation
+matplotlib==3.7.1
+seaborn==0.13.2
+
+# Deep Learning
+tensorflow==2.15.0
+
+# Inférence optimisée (Intel NPU / CPU / GPU)
+openvino==2024.0.0
+
+# Dashboard
+streamlit==1.32.0

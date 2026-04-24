@@ -14,10 +14,10 @@ models_dir = os.path.join(base_path, "models")
 if not os.path.exists(models_dir):
     os.makedirs(models_dir)
 
-# 2. Chargement automatique de TOUS les fichiers présents
+# 2. Chargement automatique de TOUS les fichiers
 print("--- Phase de chargement des données multi-sujets ---")
-psg_files = sorted(glob.glob(os.path.join(raw_dir, "*PSG.edf")))
-hyp_files = sorted(glob.glob(os.path.join(raw_dir, "*Hypnogram.edf")))
+psg_files = sorted(glob.glob(os.path.join(raw_dir, "*Signal.edf")))
+hyp_files = sorted(glob.glob(os.path.join(raw_dir, "*Labels.edf")))
 
 all_X = []
 all_y = []
@@ -26,31 +26,36 @@ for p, h in zip(psg_files, hyp_files):
     print(f"Traitement du sujet : {os.path.basename(p)}")
     try:
         X_sub, y_sub = create_dataset(p, h)
+
+        # --- OPTIMISATION : NORMALISATION Z-SCORE ---
+        # On normalise chaque sujet individuellement pour uniformiser les capteurs
+        X_sub = (X_sub - np.mean(X_sub)) / np.std(X_sub)
+
         all_X.append(X_sub)
         all_y.append(y_sub)
     except Exception as e:
         print(f"Erreur sur le fichier {p}: {e}")
 
-# Fusion de tous les tableaux
+# Fusion
 X = np.concatenate(all_X, axis=0)
 y = np.concatenate(all_y, axis=0)
 
-# Reshape pour le CNN : (Epoques, Points, Canal)
-X = X.reshape(X.shape[0], X.shape[2], 1)
+# Reshape pour le CNN (Epoques, Points, Canal)
+X = X.reshape(X.shape[0], X.shape[2], 1).astype(np.float32)
 
-print(f"\nTotal des données chargées : {X.shape[0]} époques.")
-print(f"Distribution des classes : {np.bincount(y)}")
+print(f"\nTotal : {X.shape[0]} époques chargées.")
+print(f"Distribution : {np.bincount(y)}")
 
-# 3. Équilibrage des classes (Crucial pour le sommeil)
+# 3. Équilibrage des classes
 weights = class_weight.compute_class_weight('balanced', classes=np.unique(y), y=y)
 class_weights = dict(enumerate(weights))
 
 # 4. Création et Entraînement
-print("\n--- Initialisation de l'IA ---")
-model = build_cnn_lstm_model(input_shape=(3000, 1))
+print("\n--- Initialisation de l'IA (CNN-LSTM) ---")
+# On s'assure que l'input shape correspond aux points du signal (ex: 3000 pour 100Hz)
+model = build_cnn_lstm_model(input_shape=(X.shape[1], 1))
 
-print("\n--- Début de l'entraînement (Plusieurs sujets) ---")
-# On passe à 20 époques car il y a plus de données à apprendre
+print("\n--- Début de l'entraînement ---")
 history = model.fit(
     X, y,
     epochs=20,
@@ -60,27 +65,28 @@ history = model.fit(
     shuffle=True
 )
 
-# 5. Sauvegarde
+# 5. Sauvegarde au format standard
 model_save_path = os.path.join(models_dir, "sleep_model_v1.keras")
 model.save(model_save_path)
-print(f"\nModèle global sauvegardé : {model_save_path}")
+print(f"\nModèle sauvegardé : {model_save_path}")
 
-# 6. Optimisation pour le NPU Intel AI Boost
-print("\n--- Optimisation pour le NPU Intel ---")
+# 6. OPTIMISATION NPU (OpenVINO FP16)
+print("\n--- Conversion stratégique pour Intel AI Boost ---")
 try:
     import openvino as ov
 
-    core = ov.Core()
-
-    # Export pour conversion
+    # Dossier temporaire pour l'export TensorFlow
     export_path = os.path.join(models_dir, "temp_export")
     model.export(export_path)
 
+    # Conversion avec compression FP16 (Indispensable pour le NPU)
     ov_model = ov.convert_model(export_path)
     ov_xml_path = os.path.join(models_dir, "sleep_model_npu.xml")
-    ov.save_model(ov_model, ov_xml_path)
 
-    print(f"Succès ! Le NPU utilisera : {ov_xml_path}")
-    print("Appareils Intel disponibles :", core.available_devices)
+    # On force la compression FP16 ici
+    ov.save_model(ov_model, ov_xml_path, compress_to_fp16=True)
+
+    print(f"✅ SUCCÈS : Le modèle est prêt pour le NPU en FP16 !")
+    print(f"Fichier : {ov_xml_path}")
 except Exception as e:
-    print(f"Note : Conversion NPU ignorée ou erreur : {e}")
+    print(f"❌ Erreur lors de la conversion NPU : {e}")
