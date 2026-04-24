@@ -173,6 +173,8 @@ Typiquement : l’environnement Cloud utilise **Python 3.14** par défaut → `o
 
 Les fichiers **IR OpenVINO** (`sleep_model_npu.xml` / `.bin`) exportés avec une version antérieure restent en général lisibles par un runtime OpenVINO plus récent (inférence CPU).
 
+**Erreur** `cannot import name 'sph_harm' from 'scipy.special'` **lors de la lecture EDF** : versions récentes de **SciPy (≥ ~1.14)** ne fournissent plus ce symbole comme MNE 1.6 l’attend. Le `requirements.txt` impose **`scipy>=1.11,<1.14`**. Après mise à jour du dépôt, redéployer l’app.
+
 ---
 
 ## 📥 Données
