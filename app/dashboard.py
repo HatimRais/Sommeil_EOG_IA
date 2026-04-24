@@ -15,8 +15,6 @@ import pandas as pd
 import mne
 import openvino as ov
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.colors import ListedColormap
 import streamlit as st
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -32,15 +30,6 @@ N_POINTS = int(EPOCH_DURATION * SFREQ)
 BATCH_INFER = 64
 STAGES = ['W', 'N1', 'N2', 'N3', 'REM']
 STAGE_FULL = ['Wake', 'N1 (Stage 1)', 'N2 (Stage 2)', 'N3 (Slow Wave Sleep)', 'REM']
-
-# Palette médicale (convention polysomnographie clinique)
-STAGE_COLORS = {
-    0: '#FFCB47',  # W   — jaune
-    1: '#B8D4E3',  # N1  — bleu très clair
-    2: '#6FA8DC',  # N2  — bleu moyen
-    3: '#1B4965',  # N3  — bleu profond (deep sleep)
-    4: '#C73E1D',  # REM — rouge (convention médicale)
-}
 
 # Valeurs normatives adulte (AASM / Carskadon-Dement)
 NORMS = {
@@ -76,811 +65,42 @@ st.set_page_config(
 
 
 # ============================================================================
-# THEME SYSTEM — 3 modes : System / Light / Dark
+# UI theme (single source: app/ui_theme.py)
 # ============================================================================
-THEME_LIGHT = """
-    --bg:           #F4F6F9;
-    --surface:      #FFFFFF;
-    --surface-2:    #F9FAFB;
-    --border:       #E2E8F0;
-    --border-soft:  #EEF2F6;
-    --text:         #0F172A;
-    --text-muted:   #64748B;
-    --primary:      #1B4965;
-    --primary-2:    #2C7DA0;
-    --primary-soft: #E6EEF4;
-    --accent:       #2C7DA0;
-    --success:      #15803D;
-    --warning:      #B45309;
-    --danger:       #B91C1C;
-    --shadow:       0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06);
-    --shadow-hover: 0 4px 12px rgba(15,23,42,0.08);
-    --sb-bg:        #EDF1F5;
-    --sb-surface:   #FFFFFF;
-    --sb-border:    #D1D9E2;
-    --sb-text:      #0F172A;
-    --sb-muted:     #64748B;
-    --sb-accent:    #1B4965;
-    --header-from:  #1B4965;
-    --header-to:    #2C7DA0;
-    --header-text:  #FFFFFF;
-    --chip-norm-bg:  #ECFDF5; --chip-norm-fg:  #047857; --chip-norm-bd:  #A7F3D0;
-    --chip-warn-bg:  #FFFBEB; --chip-warn-fg:  #B45309; --chip-warn-bd:  #FCD34D;
-    --chip-alert-bg: #FEF2F2; --chip-alert-fg: #B91C1C; --chip-alert-bd: #FCA5A5;
-    --chip-info-bg:  #EFF6FF; --chip-info-fg:  #1D4ED8; --chip-info-bd:  #BFDBFE;
-"""
-
-THEME_DARK = """
-    --bg:           #0B1220;
-    --surface:      #131C2E;
-    --surface-2:    #182340;
-    --border:       #2A3650;
-    --border-soft:  #1E2A44;
-    --text:         #E5EAF2;
-    --text-muted:   #94A3B8;
-    --primary:      #5FA8D3;
-    --primary-2:    #62D2C4;
-    --primary-soft: #1B2C44;
-    --accent:       #62D2C4;
-    --success:      #34D399;
-    --warning:      #FBBF24;
-    --danger:       #F87171;
-    --shadow:       0 1px 2px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
-    --shadow-hover: 0 4px 14px rgba(0,0,0,0.5);
-    --sb-bg:        #070D1A;
-    --sb-surface:   #131C2E;
-    --sb-border:    #2A3650;
-    --sb-text:      #E5EAF2;
-    --sb-muted:     #94A3B8;
-    --sb-accent:    #62D2C4;
-    --header-from:  #1B4965;
-    --header-to:    #2C7DA0;
-    --header-text:  #FFFFFF;
-    --chip-norm-bg:  #0F2A1F; --chip-norm-fg:  #6EE7B7; --chip-norm-bd:  #14532D;
-    --chip-warn-bg:  #2A1F0A; --chip-warn-fg:  #FCD34D; --chip-warn-bd:  #78350F;
-    --chip-alert-bg: #2A0E0E; --chip-alert-fg: #FCA5A5; --chip-alert-bd: #7F1D1D;
-    --chip-info-bg:  #0E1B33; --chip-info-fg:  #93C5FD; --chip-info-bd:  #1E3A8A;
-"""
-
-
-def _theme_vars_block(mode: str) -> str:
-    if mode == "Dark":
-        return f":root {{ {THEME_DARK} color-scheme: dark; }}"
-    if mode == "Light":
-        return f":root {{ {THEME_LIGHT} color-scheme: light; }}"
-    return (
-        f":root {{ {THEME_LIGHT} color-scheme: light dark; }}\n"
-        f"@media (prefers-color-scheme: dark) {{ :root {{ {THEME_DARK} color-scheme: dark; }} }}"
-    )
-
-
-THEME_BASE_CSS = """
-/* ========== Reset & global ========== */
-html, body, [class*="css"] {
-    font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: var(--text);
-}
-.stApp { background: var(--bg) !important; color: var(--text); }
-.block-container { padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1500px; }
-
-/* Headings everywhere */
-h1, h2, h3, h4, h5, h6 { color: var(--text); }
-p, span, div, label, li { color: var(--text); }
-a { color: var(--primary-2); }
-
-code {
-    background: var(--surface-2) !important; color: var(--text) !important;
-    padding: 1px 5px; border-radius: 4px; font-size: 0.85em;
-    border: 1px solid var(--border-soft);
-}
-
-/* ========== SIDEBAR ========== */
-[data-testid="stSidebar"] {
-    background: var(--sb-bg) !important;
-    border-right: 1px solid var(--sb-border);
-}
-[data-testid="stSidebar"] > div:first-child { padding-top: 0.6rem; }
-[data-testid="stSidebar"] *, [data-testid="stSidebar"] p,
-[data-testid="stSidebar"] label, [data-testid="stSidebar"] span,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
-    color: var(--sb-text);
-}
-[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3, [data-testid="stSidebar"] h4 {
-    color: var(--sb-text); font-weight: 600;
-}
-[data-testid="stSidebar"] h5 {
-    color: var(--sb-accent) !important;
-    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.4px;
-    font-weight: 700; margin: 0.7rem 0 0.4rem 0;
-}
-[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
-[data-testid="stSidebar"] small {
-    color: var(--sb-muted) !important; font-size: 0.78rem;
-}
-[data-testid="stSidebar"] hr {
-    border: none; border-top: 1px solid var(--sb-border); margin: 0.8rem 0;
-}
-[data-testid="stSidebar"] code {
-    background: var(--sb-surface) !important;
-    color: var(--sb-text) !important;
-    border: 1px solid var(--sb-border);
-}
-
-/* Sidebar — selectbox */
-[data-testid="stSidebar"] [data-baseweb="select"] > div {
-    background: var(--sb-surface) !important;
-    border: 1px solid var(--sb-border) !important;
-    border-radius: 6px; min-height: 38px;
-    color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] > div:hover {
-    border-color: var(--sb-accent) !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] svg { fill: var(--sb-accent) !important; }
-[data-testid="stSidebar"] [data-baseweb="select"] input,
-[data-testid="stSidebar"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p {
-    color: var(--sb-text) !important;
-}
-
-/* Select (sidebar) : toutes les couches (Emotion: st-emotion-cache-*, Base Web, ezrtsby2) */
-[data-testid="stSidebar"] [data-baseweb="select"] > div,
-[data-testid="stSidebar"] [data-baseweb="select"] > div > div,
-[data-testid="stSidebar"] [data-baseweb="select"] [class*="st-emotion-cache"] {
-    background-color: var(--sb-surface) !important;
-    background: var(--sb-surface) !important;
-    color: var(--sb-text) !important;
-    border-color: var(--sb-border) !important;
-    box-shadow: none !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] [class*="st-emotion-cache"] p,
-[data-testid="stSidebar"] [data-baseweb="select"] [class*="st-emotion-cache"] span,
-[data-testid="stSidebar"] [data-baseweb="select"] [class*="st-emotion-cache"] label {
-    color: var(--sb-text) !important;
-    -webkit-text-fill-color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] [class*="st-emotion-cache"] svg {
-    fill: var(--sb-accent) !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] [class*="ezrtsby2"] {
-    background: var(--sb-surface) !important;
-    background-color: var(--sb-surface) !important;
-    color: var(--sb-text) !important;
-}
-
-/* Selectbox dropdown popover (souvent en portail; aligné sidebar — selects uniquement ici) */
-[data-baseweb="popover"] [role="listbox"] {
-    background: var(--sb-surface) !important;
-    border: 1px solid var(--sb-border) !important;
-    color: var(--sb-text) !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important;
-}
-[data-baseweb="popover"] [role="option"] {
-    color: var(--sb-text) !important;
-    background: var(--sb-surface) !important;
-}
-[data-baseweb="popover"] [role="option"]:hover,
-[data-baseweb="popover"] [role="option"][aria-selected="true"] {
-    background: var(--primary-soft) !important;
-    color: var(--sb-text) !important;
-}
-[data-baseweb="popover"] [role="option"]:focus,
-[data-baseweb="popover"] [role="option"]:active {
-    background: var(--primary-soft) !important;
-}
-/* Couches internes Base Web (listbox) */
-[data-baseweb="popover"] [role="listbox"] [class*="st-emotion-cache"] {
-    background: var(--sb-surface) !important;
-    color: var(--sb-text) !important;
-}
-
-/* Sidebar — radio (vertical, ex. Source) */
-[data-testid="stSidebar"] .stRadio > div {
-    background: var(--sb-surface) !important;
-    border: 1px solid var(--sb-border) !important;
-    border-radius: 6px; padding: 8px 10px; gap: 4px;
-}
-[data-testid="stSidebar"] .stRadio label { color: var(--sb-text) !important; padding: 4px 0; }
-/* Option active (Source) : surtout thème sombre / system dark */
-[data-testid="stSidebar"] .stRadio [role="radiogroup"]:not([style*="row"]) > label {
-    background: transparent !important;
-    background-color: transparent !important;
-    color: var(--sb-text) !important;
-    border: 1px solid transparent !important;
-    border-radius: 6px;
-}
-[data-testid="stSidebar"] .stRadio [role="radiogroup"]:not([style*="row"]) > label[data-checked="true"] {
-    background: var(--primary-soft) !important;
-    background-color: var(--primary-soft) !important;
-    border-color: var(--sb-accent) !important;
-    color: var(--sb-text) !important;
-    box-shadow: inset 0 0 0 1px var(--sb-border) !important;
-}
-[data-testid="stSidebar"] .stRadio [role="radiogroup"]:not([style*="row"]) > label [class*="st-emotion-cache"] {
-    background: transparent !important;
-    color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] .stRadio [role="radiogroup"] > label > div:first-child {
-    background-color: transparent !important; border-color: var(--sb-muted) !important;
-}
-[data-testid="stSidebar"] .stRadio [role="radiogroup"] input:checked ~ div,
-[data-testid="stSidebar"] .stRadio [role="radiogroup"] > label[data-checked="true"] > div:first-child {
-    background-color: var(--sb-accent) !important; border-color: var(--sb-accent) !important;
-}
-
-/* Sidebar — horizontal radio (segmented : Theme System / Light / Dark) */
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] {
-    gap: 0 !important; padding: 3px;
-    background: var(--sb-surface) !important;
-    background-color: var(--sb-surface) !important;
-    border: 1px solid var(--sb-border) !important;
-    border-radius: 8px;
-}
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] > label {
-    flex: 1; text-align: center; padding: 6px 4px; cursor: pointer;
-    border-radius: 6px; transition: all 0.15s; margin: 0;
-    font-size: 0.82rem; font-weight: 500;
-    display: flex !important; align-items: center; justify-content: center;
-    background: transparent !important;
-    color: var(--sb-text) !important;
-    -webkit-text-fill-color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] > label [class*="st-emotion-cache"] {
-    background: transparent !important;
-    color: inherit !important;
-}
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] > label:hover {
-    background: var(--primary-soft) !important;
-    background-color: var(--primary-soft) !important;
-    color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] > label[data-checked="true"] {
-    background: var(--sb-accent) !important;
-    background-color: var(--sb-accent) !important;
-    color: var(--sb-bg) !important;
-    -webkit-text-fill-color: var(--sb-bg) !important;
-    box-shadow: none !important;
-}
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] > label[data-checked="true"] * {
-    color: var(--sb-bg) !important;
-    -webkit-text-fill-color: var(--sb-bg) !important;
-    font-weight: 700;
-}
-/* Hide radio circles only in horizontal segmented mode */
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] > label > div:first-child {
-    display: none !important;
-}
-
-/* Sidebar — file uploader */
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section {
-    background: var(--sb-surface) !important;
-    border: 1.5px dashed var(--sb-border) !important;
-    border-radius: 8px; padding: 14px;
-}
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section:hover {
-    border-color: var(--sb-accent) !important;
-}
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section *,
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section [data-testid="stMarkdownContainer"] p {
-    color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section small {
-    color: var(--sb-muted) !important;
-}
-[data-testid="stSidebar"] [data-testid="stFileUploader"] button {
-    background: var(--sb-accent) !important; color: var(--sb-bg) !important;
-    border: none !important; font-weight: 600 !important; border-radius: 5px !important;
-}
-[data-testid="stSidebar"] [data-testid="stFileUploaderFile"] {
-    background: var(--sb-surface) !important; border: 1px solid var(--sb-border) !important;
-    border-radius: 6px;
-}
-[data-testid="stSidebar"] [data-testid="stFileUploaderFile"] * { color: var(--sb-text) !important; }
-
-/* Sidebar — buttons */
-[data-testid="stSidebar"] .stButton > button {
-    background: var(--sb-accent) !important; color: var(--sb-bg) !important;
-    border: none !important; border-radius: 6px;
-    padding: 0.6rem 1rem; font-weight: 700; font-size: 0.92rem;
-    box-shadow: var(--shadow); transition: all 0.15s;
-}
-[data-testid="stSidebar"] .stButton > button:hover {
-    transform: translateY(-1px); box-shadow: var(--shadow-hover); filter: brightness(1.08);
-}
-[data-testid="stSidebar"] .stButton > button[kind="primary"] {
-    background: var(--success) !important; color: #FFFFFF !important;
-}
-
-/* Sidebar — alerts */
-[data-testid="stSidebar"] [data-testid="stAlert"] {
-    background: var(--sb-surface) !important;
-    border-left: 3px solid var(--sb-accent) !important;
-    border-radius: 6px;
-}
-[data-testid="stSidebar"] [data-testid="stAlert"] * { color: var(--sb-text) !important; }
-
-/* ========== HEADER BAR ========== */
-.med-header {
-    background: linear-gradient(90deg, var(--header-from) 0%, var(--header-to) 100%);
-    color: var(--header-text); padding: 1.1rem 1.6rem; border-radius: 10px;
-    display: flex; justify-content: space-between; align-items: center;
-    box-shadow: var(--shadow); margin-bottom: 1.2rem;
-}
-.med-header h1 { color: var(--header-text); margin: 0; font-size: 1.35rem; font-weight: 600; letter-spacing: -0.3px; }
-.med-header .subtitle { color: rgba(255,255,255,0.78); font-size: 0.82rem; margin-top: 3px; }
-.med-header .tag {
-    background: rgba(255,255,255,0.15); padding: 5px 12px; border-radius: 20px;
-    font-size: 0.78rem; font-weight: 500; margin-left: 6px;
-    border: 1px solid rgba(255,255,255,0.18);
-    color: var(--header-text);
-}
-
-/* ========== PATIENT CARD ========== */
-.patient-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-left: 4px solid var(--primary);
-    border-radius: 8px; padding: 1rem 1.4rem; margin-bottom: 1.2rem;
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;
-    box-shadow: var(--shadow);
-}
-.patient-card .field { display: flex; flex-direction: column; }
-.patient-card .label {
-    font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;
-    letter-spacing: 0.6px; font-weight: 600;
-}
-.patient-card .value { font-size: 0.95rem; color: var(--text); font-weight: 500; margin-top: 3px; }
-
-/* ========== SECTION TITLES ========== */
-.section-title {
-    font-size: 0.92rem; font-weight: 700; color: var(--primary);
-    margin: 1.6rem 0 0.9rem 0; padding-bottom: 6px;
-    border-bottom: 2px solid var(--primary-2);
-    letter-spacing: 0.4px; text-transform: uppercase;
-}
-
-/* ========== METRIC CARDS ========== */
-div[data-testid="stMetric"] {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 0.75rem 1rem; box-shadow: var(--shadow); transition: box-shadow 0.15s;
-}
-div[data-testid="stMetric"]:hover { box-shadow: var(--shadow-hover); }
-div[data-testid="stMetricLabel"] {
-    font-size: 0.7rem !important; color: var(--text-muted) !important;
-    text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
-}
-div[data-testid="stMetricValue"] {
-    color: var(--primary) !important; font-size: 1.45rem !important;
-    font-weight: 700; line-height: 1.2;
-}
-div[data-testid="stMetricDelta"] { font-size: 0.75rem !important; }
-
-/* ========== CHIPS ========== */
-.chip {
-    display: inline-block; padding: 3px 10px; border-radius: 12px;
-    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.4px;
-    border: 1px solid transparent;
-}
-.chip-norm   { background: var(--chip-norm-bg);  color: var(--chip-norm-fg);  border-color: var(--chip-norm-bd); }
-.chip-warn   { background: var(--chip-warn-bg);  color: var(--chip-warn-fg);  border-color: var(--chip-warn-bd); }
-.chip-alert  { background: var(--chip-alert-bg); color: var(--chip-alert-fg); border-color: var(--chip-alert-bd); }
-.chip-info   { background: var(--chip-info-bg);  color: var(--chip-info-fg);  border-color: var(--chip-info-bd); }
-
-/* ========== TABS ========== */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 4px; border-bottom: 1px solid var(--border); background: transparent;
-}
-.stTabs [data-baseweb="tab"] {
-    background: transparent; padding: 10px 18px; color: var(--text-muted);
-    font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.15s;
-}
-.stTabs [data-baseweb="tab"]:hover {
-    color: var(--primary); background: var(--primary-soft);
-}
-.stTabs [aria-selected="true"] {
-    color: var(--primary) !important; border-bottom: 2px solid var(--primary) !important;
-    font-weight: 600;
-}
-
-/* ========== MAIN BUTTONS ========== */
-.stButton > button, .stDownloadButton > button {
-    background: var(--primary); color: #FFFFFF; border: none; border-radius: 6px;
-    padding: 0.55rem 1.3rem; font-weight: 600; font-size: 0.88rem;
-    transition: all 0.15s;
-}
-.stButton > button:hover, .stDownloadButton > button:hover {
-    filter: brightness(1.1); transform: translateY(-1px); box-shadow: var(--shadow-hover);
-}
-
-/* ========== DATA TABLES & DATAFRAMES ========== */
-[data-testid="stDataFrame"] {
-    border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
-    background: var(--surface);
-}
-
-/* ========== ALERTS / INFO ========== */
-[data-testid="stAlert"] {
-    border-radius: 6px; border-left-width: 4px;
-}
-
-/* ========== PROGRESS BAR ========== */
-.stProgress > div > div > div > div { background: var(--primary-2); }
-
-/* ========== DISCLAIMER ========== */
-.disclaimer {
-    background: var(--chip-warn-bg); border-left: 4px solid var(--warning);
-    border-radius: 4px; padding: 10px 14px;
-    font-size: 0.8rem; color: var(--chip-warn-fg); margin-top: 1.5rem;
-}
-
-/* ========== EXPANDER ========== */
-[data-testid="stExpander"] {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-}
-[data-testid="stExpander"] summary { color: var(--text); }
-
-/* ========== JSON / CODE BLOCKS ========== */
-[data-testid="stJson"], [data-testid="stCodeBlock"], pre {
-    background: var(--surface) !important; border: 1px solid var(--border);
-    border-radius: 6px; color: var(--text);
-}
-[data-testid="stJson"] *, [data-testid="stCodeBlock"] *, pre code {
-    color: var(--text) !important;
-}
-[data-testid="stJson"] .key { color: var(--primary-2) !important; }
-[data-testid="stJson"] .string { color: var(--success) !important; }
-[data-testid="stJson"] .number { color: var(--warning) !important; }
-
-/* ========== DATAFRAMES (native) ========== */
-[data-testid="stDataFrame"] [data-testid="stDataFrameResizable"] {
-    background: var(--surface) !important;
-}
-[data-testid="stDataFrame"] table, [data-testid="stDataFrame"] thead tr th,
-[data-testid="stDataFrame"] tbody tr td {
-    background: var(--surface) !important; color: var(--text) !important;
-    border-color: var(--border) !important;
-}
-[data-testid="stDataFrame"] thead tr th {
-    background: var(--surface-2) !important; font-weight: 600;
-}
-
-/* ========== TEXT INPUT / MAIN SELECTBOX ========== */
-[data-baseweb="select"] > div, [data-baseweb="input"] > div, .stTextInput > div > div {
-    background: var(--surface); border-color: var(--border);
-}
-
-/* Helper utility classes for inline annotations */
-.muted { color: var(--text-muted); }
-.norm-line { font-size: 0.78rem; color: var(--text-muted); }
-
-/* Clinical interpretation boxes */
-.interp-box {
-    background: var(--surface-2); border-left: 3px solid var(--primary);
-    border-radius: 4px; padding: 10px 14px; margin-bottom: 6px;
-    color: var(--text);
-}
-.interp-box.norm  { border-left-color: var(--success); }
-.interp-box.warn  { border-left-color: var(--warning); }
-.interp-box.alert { border-left-color: var(--danger); }
-
-/* ========== SCROLLBAR ========== */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-"""
-
-# Responsive: phones & small tablets (Streamlit main area uses stHorizontalBlock / stColumn)
-THEME_RESPONSIVE_CSS = """
-/* ========== TABLET (≤ 900px) — softer layout ========== */
-@media (max-width: 900px) {
-  .block-container { max-width: 100% !important; padding-left: 1rem; padding-right: 1rem; }
-  .med-header { flex-wrap: wrap; gap: 0.75rem; }
-  .med-header h1 { font-size: 1.15rem; }
-  .stTabs [data-baseweb="tab-list"] { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 2px; }
-  .stTabs [data-baseweb="tab"] { padding: 8px 12px; font-size: 0.8rem; white-space: nowrap; }
-}
-
-/* Main content only (excludes sidebar) — stHorizontalBlock wraps each st.columns() row */
-/* Streamlit: section.main in app view, or [data-testid="stMain"] in newer versions */
-/* ========== PHONE (≤ 768px) — stack columns, touch-friendly ========== */
-@media (max-width: 768px) {
-  .stApp { padding-left: env(safe-area-inset-left, 0); padding-right: env(safe-area-inset-right, 0); }
-  .block-container { padding-top: 0.6rem; padding-bottom: 1.2rem; padding-left: 0.65rem; padding-right: 0.65rem; }
-
-  [data-testid="stAppViewContainer"] .main, [data-testid="stMain"] {
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0));
-  }
-
-  /* Stack Streamlit column rows (metrics, Welcome columns, tab rows) — main only */
-  section.main [data-testid="stHorizontalBlock"],
-  [data-testid="stMain"] [data-testid="stHorizontalBlock"] {
-    flex-direction: column !important;
-    flex-wrap: nowrap !important;
-    align-items: stretch !important;
-    gap: 0.75rem !important;
-  }
-  section.main [data-testid="stHorizontalBlock"] [data-testid="column"],
-  [data-testid="stMain"] [data-testid="stHorizontalBlock"] [data-testid="column"] {
-    width: 100% !important;
-    min-width: 0 !important;
-    flex: 1 1 auto !important;
-  }
-
-  .med-header {
-    flex-direction: column; align-items: flex-start;
-    padding: 0.9rem 1rem; border-radius: 8px;
-  }
-  .med-header h1 { font-size: 1.05rem; line-height: 1.3; }
-  .med-header .subtitle { font-size: 0.75rem; }
-  .med-header .tag { font-size: 0.7rem; padding: 4px 8px; margin: 0 6px 0 0; }
-
-  .patient-card {
-    grid-template-columns: 1fr; gap: 0.75rem; padding: 0.85rem 1rem;
-  }
-  .section-title { font-size: 0.85rem; margin: 1.1rem 0 0.65rem; }
-
-  div[data-testid="stMetric"] { padding: 0.65rem 0.75rem; }
-  div[data-testid="stMetricValue"] { font-size: 1.25rem !important; }
-
-  .stButton > button, .stDownloadButton > button,
-  [data-testid="stSidebar"] .stButton > button {
-    min-height: 44px; padding: 0.65rem 1rem; font-size: 0.9rem;
-  }
-  [data-testid="stSidebar"] [data-baseweb="select"] > div { min-height: 44px; }
-  [data-testid="stFileUploader"] section { min-height: 100px; }
-
-  [data-baseweb="popover"] { max-width: min(100vw, 100%); }
-
-  [data-testid="stDataFrame"] { max-width: 100%; overflow: auto; -webkit-overflow-scrolling: touch; }
-
-  .stButton > button, .stDownloadButton > button { -webkit-tap-highlight-color: transparent; }
-}
-
-/* ========== NARROW PHONE (≤ 480px) — single column, compact type ========== */
-@media (max-width: 480px) {
-  .med-header h1 { font-size: 0.98rem; }
-  .stTabs [data-baseweb="tab"] { padding: 6px 8px; font-size: 0.72rem; }
-  [data-testid="stSidebar"] [data-baseweb="select"] > div, [data-testid="stSidebar"] [data-baseweb="input"] > div { font-size: 0.88rem; }
-  [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { font-size: 0.95rem; }
-
-  [data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] {
-    flex-wrap: wrap;
-  }
-  [data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] > label {
-    min-width: 0; font-size: 0.7rem; padding: 5px 2px;
-  }
-
-  .disclaimer, .interp-box { font-size: 0.75rem; padding: 8px 10px; }
-}
-
-/* iOS: avoid automatic zoom on focus in fields (16px+ font) */
-@media (max-width: 768px) {
-  [data-baseweb="input"] input,
-  [data-baseweb="select"] input,
-  input[type="text"] {
-    font-size: 16px !important;
-  }
-}
-"""
-
-# Dernière couche: Streamlit charge son thème (config + emotion) après nos règles.
-# Ciblage fort + !important + réinjection en fin de script (theme_style_last).
-THEME_OVERRIDES_CSS = """
-/* ——— App shell (fond d’écran, zone principale) ——— */
-.stApp, [data-testid="stAppViewContainer"],
-[data-testid="stAppViewBlockContainer"] {
-  background: var(--bg) !important;
-  color: var(--text) !important;
-  background-image: none !important;
-}
-section.main, [data-testid="stMain"] {
-  background: transparent !important;
-  color: var(--text) !important;
-}
-div[data-testid="block-container"] {
-  background: transparent !important;
-  color: var(--text) !important;
-}
-
-/* ——— Markdown (zone principale + onglets) — Streamlit met souvent couleur thème clair sur <p> ——— */
-section.main [data-testid="stMarkdownContainer"] p,
-section.main [data-testid="stMarkdownContainer"] li,
-section.main [data-testid="stMarkdownContainer"] span,
-section.main [data-testid="stMarkdownContainer"] strong,
-section.main [data-testid="stMarkdownContainer"] b,
-section.main [data-testid="stMarkdownContainer"] em,
-[role="tabpanel"] [data-testid="stMarkdownContainer"] p,
-[role="tabpanel"] [data-testid="stMarkdownContainer"] li,
-[role="tabpanel"] [data-testid="stMarkdownContainer"] span,
-[role="tabpanel"] [data-testid="stMarkdownContainer"] strong,
-[role="tabpanel"] [data-testid="stMarkdownContainer"] b {
-  color: var(--text) !important;
-  -webkit-text-fill-color: var(--text) !important;
-}
-section.main a, [role="tabpanel"] [data-testid="stMarkdownContainer"] a {
-  color: var(--primary-2) !important;
-}
-
-/* ——— Sidebar: tout le texte (y compris gras) ——— */
-[data-testid="stSidebar"] {
-  background: var(--sb-bg) !important;
-  background-image: none !important;
-  color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h4,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] strong,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] b,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] span,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] li,
-[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p,
-[data-testid="stSidebar"] [data-testid="stCaptionContainer"] * {
-  color: var(--sb-text) !important;
-  -webkit-text-fill-color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] h5, [data-testid="stSidebar"] [data-testid="stHeader"] h1,
-[data-testid="stSidebar"] [data-testid="stHeader"] h2, [data-testid="stSidebar"] [data-testid="stHeader"] h3 {
-  color: var(--sb-accent) !important;
-  -webkit-text-fill-color: var(--sb-accent) !important;
-}
-[data-testid="stSidebar"] p, [data-testid="stSidebar"] li { color: var(--sb-text) !important; }
-
-/* Select / inputs sidebar (Base Web + Emotion) */
-[data-testid="stSidebar"] [data-baseweb="select"] > div,
-[data-testid="stSidebar"] [data-baseweb="select"] > div > div,
-[data-testid="stSidebar"] [data-baseweb="select"] [class*="st-emotion-cache"],
-[data-testid="stSidebar"] [data-baseweb="select"] [class*="ezrtsby2"] {
-  background-color: var(--sb-surface) !important;
-  background: var(--sb-surface) !important;
-  border-color: var(--sb-border) !important;
-  color: var(--sb-text) !important;
-  box-shadow: none !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] input,
-[data-testid="stSidebar"] [data-baseweb="select"] [data-testid="stMarkdownContainer"] p,
-[data-testid="stSidebar"] [data-baseweb="select"] span[role="combobox"] {
-  color: var(--sb-text) !important;
-  -webkit-text-fill-color: var(--sb-text) !important;
-  caret-color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] [data-baseweb="select"] svg { fill: var(--sb-accent) !important; }
-
-/* Liste déroulante portail (Hardware) : aligner sb_* — System dark / Dark */
-[data-baseweb="popover"] [role="listbox"],
-[data-baseweb="popover"] [role="listbox"] [class*="st-emotion-cache"] {
-  background: var(--sb-surface) !important;
-  background-color: var(--sb-surface) !important;
-  color: var(--sb-text) !important;
-  border-color: var(--sb-border) !important;
-}
-[data-baseweb="popover"] [role="option"] {
-  background: var(--sb-surface) !important;
-  color: var(--sb-text) !important;
-  -webkit-text-fill-color: var(--sb-text) !important;
-}
-[data-baseweb="popover"] [role="option"][aria-selected="true"],
-[data-baseweb="popover"] [role="option"]:hover {
-  background: var(--primary-soft) !important;
-  color: var(--sb-text) !important;
-}
-
-/* Radio Theme (ligne) + Source (colonne) */
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] > label[data-checked="true"] {
-  background: var(--sb-accent) !important;
-  background-color: var(--sb-accent) !important;
-  color: var(--sb-bg) !important;
-  -webkit-text-fill-color: var(--sb-bg) !important;
-}
-[data-testid="stSidebar"] .stRadio > div[role="radiogroup"][style*="row"] > label[data-checked="true"] * {
-  color: var(--sb-bg) !important;
-  -webkit-text-fill-color: var(--sb-bg) !important;
-}
-[data-testid="stSidebar"] .stRadio [role="radiogroup"]:not([style*="row"]) > label[data-checked="true"] {
-  background: var(--primary-soft) !important;
-  background-color: var(--primary-soft) !important;
-  border-color: var(--sb-accent) !important;
-  color: var(--sb-text) !important;
-}
-
-/* Radio: libellés */
-[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
-[data-testid="stSidebar"] [data-testid="stWidgetLabel"] label,
-[data-testid="stSidebar"] [data-baseweb="radio"] label,
-[data-testid="stSidebar"] .stRadio label { color: var(--sb-text) !important; }
-
-/* File uploader (texte seulement, pas le bouton browse) */
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section p,
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section small,
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section span,
-[data-testid="stSidebar"] [data-testid="stFileUploader"] section [data-testid="stMarkdownContainer"] * {
-  color: var(--sb-text) !important;
-}
-[data-testid="stSidebar"] [data-testid="stFileUploader"] button {
-  color: var(--sb-bg) !important;
-  -webkit-text-fill-color: var(--sb-bg) !important;
-}
-
-/* Métriques (labels/valeurs parfois noirs) */
-div[data-testid="stMetric"] {
-  background-color: var(--surface) !important;
-  border-color: var(--border) !important;
-  color: var(--text) !important;
-}
-div[data-testid="stMetricLabel"] > div, div[data-testid="stMetricLabel"] {
-  color: var(--text-muted) !important;
-  -webkit-text-fill-color: var(--text-muted) !important;
-}
-div[data-testid="stMetricValue"] > div, div[data-testid="stMetricValue"] {
-  color: var(--primary) !important;
-  -webkit-text-fill-color: var(--primary) !important;
-}
-
-/* Onglets */
-.stTabs [data-baseweb="tab"] { color: var(--text-muted) !important; }
-.stTabs [aria-selected="true"] { color: var(--primary) !important; -webkit-text-fill-color: var(--primary) !important; }
-
-/* Légende hypnogram (HTML) */
-span.med-legend-txt { color: var(--text) !important; -webkit-text-fill-color: var(--text) !important; }
-"""
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
+if _APP_DIR not in sys.path:
+    sys.path.insert(0, _APP_DIR)
+from ui_theme import (
+    DASHBOARD_TAIL_CSS,
+    build_dashboard_stylesheet,
+    get_matplotlib_plot_dict,
+    resolve_plot_uses_light_charts,
+    text_on_background,
+)
 
 
 def inject_theme(mode: str):
-    """Inject CSS for the chosen theme mode (System | Light | Dark)."""
     st.markdown(
-        f"<style>{_theme_vars_block(mode)}\n{THEME_BASE_CSS}\n{THEME_RESPONSIVE_CSS}\n{THEME_OVERRIDES_CSS}</style>",
+        f"<style>{build_dashboard_stylesheet(mode)}</style>",
         unsafe_allow_html=True,
     )
 
 
 def theme_style_last():
-    """
-    Répète les règles fortes en fin de page pour gagner sur le thème natif Streamlit
-    (ordre CSS + même spécificité).
-    """
     st.markdown(
-        f"<style data-dps-theme-overrides='1'>{THEME_OVERRIDES_CSS}</style>",
+        f'<style data-dps-theme-tail="1">{DASHBOARD_TAIL_CSS}</style>',
         unsafe_allow_html=True,
     )
 
 
-# Initialise + inject theme BEFORE the rest of the page renders
 if "theme" not in st.session_state:
     st.session_state["theme"] = "System"
 inject_theme(st.session_state["theme"])
 
 
-# ============================================================================
-# Matplotlib palette synchronised with the active theme
-# ============================================================================
-PLOT_LIGHT = dict(
-    fig_bg="#FFFFFF", axes_bg="#FAFBFC",
-    text="#1F2937", muted="#6B7280",
-    spine="#D1D5DB", grid="#E5E7EB",
-    primary="#1B4965", primary_2="#5FA8D3", accent="#2C7DA0",
-    pie_edge="#FFFFFF",
-    cm_text_dark="#1F2937", cm_text_light="#FFFFFF",
-    stage_colors={0:'#FFCB47', 1:'#B8D4E3', 2:'#6FA8DC', 3:'#1B4965', 4:'#C73E1D'},
-    cmap='Blues',
-)
-PLOT_DARK = dict(
-    fig_bg="#131C2E", axes_bg="#0B1220",
-    text="#E5EAF2", muted="#94A3B8",
-    spine="#2A3650", grid="#1E2A44",
-    primary="#5FA8D3", primary_2="#82C0E1", accent="#62D2C4",
-    pie_edge="#131C2E",
-    cm_text_dark="#0B1220", cm_text_light="#FFFFFF",
-    stage_colors={0:'#FCD34D', 1:'#B8D4E3', 2:'#5FA8D3', 3:'#62D2C4', 4:'#F87171'},
-    cmap='Blues',
-)
-
-
 def get_plot_palette() -> dict:
-    """Return matplotlib colors matching the active Streamlit theme."""
     mode = st.session_state.get("theme", "System")
-    return PLOT_DARK if mode == "Dark" else PLOT_LIGHT
+    return get_matplotlib_plot_dict(resolve_plot_uses_light_charts(mode))
 
 
 # ============================================================================
@@ -1070,8 +290,10 @@ def plot_architecture_pie(ax, counts: dict, palette=None):
         startangle=90, wedgeprops=dict(edgecolor=p['pie_edge'], linewidth=2),
         textprops=dict(fontsize=9, color=p['text']),
     )
-    for at in autotexts:
-        at.set_color('#FFFFFF'); at.set_fontweight('700'); at.set_fontsize(8.5)
+    for c_hex, at in zip(colors, autotexts):
+        at.set_color(text_on_background(c_hex))
+        at.set_fontweight('700')
+        at.set_fontsize(8.5)
     ax.set_title('Sleep Architecture (% of TST)', fontsize=10.5,
                  color=p['primary'], fontweight='600', loc='left', pad=8)
 
@@ -1162,9 +384,26 @@ def make_report_csv(preds, y_true=None) -> bytes:
 available = list_devices()
 
 with st.sidebar:
-    st.markdown("## ⚕️ DeepSleep AI")
-    st.markdown("**Polysomnography Lab**")
-    st.caption("v2.0 · OpenVINO inference engine")
+    st.markdown(
+        """
+    <div class="dps-sidebar-brand">
+        <div class="dps-mark">
+            <span class="dps-ico" aria-hidden="true">⚕️</span>
+            <div class="dps-titles">
+                <h2>DeepSleep AI</h2>
+                <p>Polysomnography Lab · v2.0</p>
+            </div>
+        </div>
+        <div class="dps-badges">
+            <span class="dps-badge">EOG</span>
+            <span class="dps-badge">AASM 5</span>
+            <span class="dps-badge">OpenVINO</span>
+        </div>
+    </div>
+    <p class="dps-sidebar-hint">Tip: load a PSG <strong>.edf</strong>, pick hardware, then run <strong>Analyze</strong> for staging, hypnogram, and (optional) expert agreement.</p>
+    """,
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
 
     # Theme switcher (System / Light / Dark)
@@ -1237,6 +476,15 @@ with st.sidebar:
     st.caption("**Model**: 1D-CNN (455k params, FP16)")
     st.caption("**Standard**: AASM 5-class scoring")
     st.caption("**Epoch length**: 30 s @ 100 Hz")
+
+    with st.expander("Reference & export", expanded=False):
+        st.markdown(
+            """
+- **Stages**: W → N1 → N2 → N3 → REM (30 s epochs @ 100 Hz EOG).
+- **Optional**: pair with an expert `.edf` hypnogram for agreement (κ, confusion matrix).
+- **Export**: epoch-level CSV from **Clinical Report** after analysis.
+            """
+        )
 
 
 # ============================================================================

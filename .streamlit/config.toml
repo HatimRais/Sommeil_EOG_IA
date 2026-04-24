@@ -1,7 +1,8 @@
+# Aligné avec app/ui_theme.py (thème clair)
 [theme]
 base = "light"
-primaryColor = "#1B4965"
-backgroundColor = "#F4F6F9"
+primaryColor = "#0C4A6E"
+backgroundColor = "#EEF1F5"
 secondaryBackgroundColor = "#FFFFFF"
 textColor = "#0F172A"
 font = "sans serif"
