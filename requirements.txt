@@ -1,11 +1,16 @@
-# Dépendances pour l’application Streamlit (inférence OpenVINO + MNE).
-# Utilisé pour le déploiement (ex. Streamlit Community Cloud) et exécution locale du dashboard.
-# Pour l’entraînement TensorFlow / Keras : voir requirements-train.txt
+# Dashboard Streamlit (OpenVINO + MNE) — choisir des versions avec wheels pip (évite le build
+# depuis des sources, souvent en échec sur la Cloud avec Python 3.13+).
+# Entraînement : requirements-train.txt
+#
+# Sur Streamlit Community Cloud : paramétrer la version de Python (voir README), idéalement 3.12.
+
+setuptools>=69.0.0
 
 mne==1.6.0
-numpy>=1.24.3,<2.0
-pandas==2.0.0
-scikit-learn==1.2.2
-matplotlib==3.7.1
-openvino==2024.0.0
+numpy>=1.26.0,<2.0
+pandas>=2.1.0,<2.3.0
+scikit-learn>=1.3.0,<1.6.0
+matplotlib>=3.7.0,<3.10.0
+# 2024.0.0 n'a pas de wheel pour Py 3.14 ; 2024.4+ / 2025+ couvrent les versions supportées
+openvino>=2024.4.0,<2027.0.0
 streamlit>=1.32.0,<2

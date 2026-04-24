@@ -149,7 +149,7 @@ Le projet est prêt pour **[Streamlit Community Cloud](https://streamlit.io/clou
 | Dépôt | **GitHub** (public pour l’offre Community) avec le code et les poids |
 | Fichier principal | `app/dashboard.py` (à indiquer dans les paramètres de l’app) |
 | Dépendances | `requirements.txt` à la racine (détecté automatiquement) |
-| Python | `runtime.txt` fixe la branche **3.10** (modifiable sur Cloud si besoin) |
+| Python | **3.12 recommandé** : `runtime.txt` contient `python-3.12`. Sur Community Cloud, le menu **Advanced settings** lors du déploiement peut **ignorer** `runtime.txt` — choisir explicitement **Python 3.12** (éviter **3.14** : pas de wheels pour d’anciennes versions d’OpenVINO, et build `pandas` depuis les sources). |
 | Modèles | Les fichiers `models/sleep_model_npu.xml` et `models/sleep_model_npu.bin` doivent être **versionnés** (ou fournis via stockage externe + script de téléchargement). Sans eux, le message *Model file not found* s’affiche. |
 | Accélération | **Pas de NPU** sur Cloud : seuls **CPU** (et éventuellement **GPU** selon l’offre) sont disponibles. Choisir **CPU** ou **AUTO** dans la barre latérale. |
 
@@ -160,6 +160,18 @@ Le projet est prêt pour **[Streamlit Community Cloud](https://streamlit.io/clou
 3. Lancer le déploiement ; le premier build peut prendre quelques minutes (téléchargement des wheels, etc.).
 
 Aucun secret n’est requis pour l’application telle quelle. Les réglages globaux par défaut sont dans [`.streamlit/config.toml`](.streamlit/config.toml).
+
+### Problème « Error installing requirements » (OpenVINO / pandas / uv)
+
+Typiquement : l’environnement Cloud utilise **Python 3.14** par défaut → `openvino==2024.0.0` n’a **pas de wheel** pour cette ABI → échec du premier installeur (`uv`), puis `pip` tente de **compiler** `numpy` / `pandas` depuis les sources → erreurs (`pkg_resources`, etc.).
+
+**À faire :**
+
+1. Mettre à jour le dépôt avec le `requirements.txt` actuel (OpenVINO **≥ 2024.4**, `pandas` **≥ 2.1`, `setuptools`).
+2. Dans **Manage app** → **Settings** (ou en **redéployant** l’app), ouvrir **Advanced settings** et fixer **Python version** sur **3.12** (ou **3.11**). Si l’interface ne permet pas de changer la version, **supprimer l’app** et la recréer pour choisir la version au moment du déploiement.
+3. Enregistrer / relancer le déploiement.
+
+Les fichiers **IR OpenVINO** (`sleep_model_npu.xml` / `.bin`) exportés avec une version antérieure restent en général lisibles par un runtime OpenVINO plus récent (inférence CPU).
 
 ---
 
