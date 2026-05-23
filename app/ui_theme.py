@@ -4,7 +4,7 @@ Clinical sleep-stage hues are fixed AASM-style; UI tokens follow a semantic ligh
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Literal, Tuple
+from typing import Any,  Dict, Literal, Tuple
 
 # ----- Clinical (AASM-consistent, identical in all themes) -----
 STAGE_COLOR_HEX: Dict[int, str] = {
