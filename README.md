@@ -1,7 +1,7 @@
 # 🌙 Sommeil_EOG_IA — Classification automatique des stades du sommeil par IA
 
 Pipeline complet de **scoring polysomnographique** à partir d'un signal **EOG (électro-oculographique)**.
-Le projet entraîne deux variantes de modèle (**CNN + Bi-LSTM** pour la précision maximale, **CNN 1D pur** pour l'accélération matérielle), les convertit en **OpenVINO IR FP16**, et fournit un **dashboard Streamlit** clinique.
+Le projet entraîne deux variantes de modèle (**CNN + Bi-LSTM** pour la précision maximale, **CNN 1D pur** pour l'accélération matérielle), exporte la variante CNN en **OpenVINO IR FP16**, et fournit un **dashboard Streamlit** clinique (**DeepSleep AI**).
 
 Les 5 stades reconnus suivent la nomenclature AASM : `W` (éveil), `N1`, `N2`, `N3` (sommeil profond, N3+N4 fusionnés) et `REM`.
 
@@ -9,15 +9,17 @@ Les 5 stades reconnus suivent la nomenclature AASM : `W` (éveil), `N1`, `N2`, `
 
 Le dashboard détecte automatiquement les devices OpenVINO disponibles et permet de choisir entre :
 
-| Device | Modèle | Mesure réelle (Intel Core Ultra 5 125U) |
+| Device | Modèle déployé | Mesure indicative (Intel Core Ultra 5 125U) |
 |---|---|---|
-| **🧠 NPU** (Intel AI Boost) | CNN 1D | ~ **5 650 époques/s** (×5.2 vs CPU) |
+| **🧠 NPU** (Intel AI Boost) | CNN 1D (IR OpenVINO) | ~ **5 650 époques/s** (×5.2 vs CPU) |
 | 🎮 GPU (iGPU) | CNN 1D | ~ 2 150 époques/s |
-| 💻 CPU | CNN 1D ou CNN+LSTM | ~ 1 100 époques/s |
+| 💻 CPU | CNN 1D (IR) ou CNN+LSTM (.keras) | ~ 1 100 époques/s |
 
 > Le NPU 3720 (Meteor Lake) ne supporte pas les opérations récurrentes (`Loop`, `ReverseSequence`).
 > C'est pourquoi un modèle **CNN 1D pur** (`build_cnn_npu_model`) a été développé en parallèle —
-> il atteint **88.4 % d'accuracy** sur 4 patients et tourne nativement sur le NPU.
+> il atteint **~88.4 % d'accuracy** sur 4 patients et tourne nativement sur le NPU via `sleep_model_npu.xml`.
+
+Le **dashboard** charge uniquement le modèle **OpenVINO** (`models/sleep_model_npu.xml`). Les fichiers `.keras` servent à l'entraînement et à l'évaluation hors ligne.
 
 ---
 
@@ -27,90 +29,100 @@ Le dashboard détecte automatiquement les devices OpenVINO disponibles et permet
 Sommeil_EOG_IA/
 │
 ├── app/
-│   └── dashboard.py          # UI Streamlit : upload EDF + inférence OpenVINO + hypnogramme
+│   ├── dashboard.py          # UI Streamlit : upload EDF, inférence OpenVINO, rapports cliniques
+│   └── ui_theme.py           # Tokens CSS (clair / sombre / système) + styles sidebar
 │
 ├── src/
-│   ├── __init__.py
-│   ├── data_loader.py        # Chargement EDF + synchro annotations → (X, y)
-│   ├── preprocessing.py      # Resample 100 Hz, filtre FIR 0.5-35 Hz, z-score + clip
-│   ├── architecture.py       # 2 modèles : CNN+Bi-LSTM (CPU) et CNN 1D pur (NPU)
-│   ├── train.py              # Entraînement variante CNN+Bi-LSTM
-│   ├── train_npu.py          # Entraînement variante CNN 1D + export IR FP16 statique
-│   └── evaluate.py           # Rapport de classification + matrice de confusion
+│   ├── data_loader.py        # create_dataset() (entraînement) · load_and_sync_labels() (dashboard)
+│   ├── preprocessing.py      # apply_preprocessing() — pipeline inférence dashboard (100 Hz)
+│   ├── architecture.py       # build_cnn_lstm_model() · build_cnn_npu_model()
+│   ├── train.py              # Entraînement CNN+Bi-LSTM → sleep_model_v1.keras
+│   ├── train_npu.py          # Entraînement CNN 1D + export OpenVINO IR FP16
+│   └── evaluate.py           # Rapport sklearn + matrice de confusion (modèle Keras)
 │
-├── data/
-│   └── raw/                  # Fichiers EDF bruts  (Patient_XX_Signal.edf / _Labels.edf)
+├── scripts/
+│   └── generate_rapport_prof_docx.py   # Génère Rapport_Projet_Sommeil_EOG_IA.docx
+│
+├── data/raw/                 # Patient_XX_Signal.edf · Patient_XX_Labels.edf (4 sujets fournis)
 │
 ├── models/
-│   ├── sleep_model_v1.keras  # CNN+Bi-LSTM Keras (CPU only — meilleur F1)
-│   ├── sleep_model_cnn.keras # CNN 1D pur Keras (source du modèle NPU)
-│   ├── sleep_model_npu.xml   # OpenVINO IR FP16 — shape statique [64, 3000, 1]
-│   └── sleep_model_npu.bin   # Poids FP16 (NPU/GPU/CPU compatible)
+│   ├── sleep_model_v1.keras      # CNN+Bi-LSTM (CPU)
+│   ├── sleep_model_cnn.keras     # CNN 1D (source avant export OV)
+│   ├── sleep_model_npu.xml       # OpenVINO IR — entrée statique [64, 3000, 1]
+│   └── sleep_model_npu.bin
 │
-├── .streamlit/
-│   └── config.toml          # Thème clinique de base (overridé via CSS dynamique)
-│
-├── requirements.txt          # Dépendances dashboard + inférence (Cloud)
-├── requirements-train.txt    # Optionnel : TensorFlow / entraînement (local)
-├── runtime.txt               # Version Python pour Streamlit Cloud
-├── .gitignore
+├── .streamlit/config.toml    # Thème Streamlit de base (complété par ui_theme.py)
+├── requirements.txt          # Dashboard + inférence (sans TensorFlow)
+├── requirements-train.txt      # TensorFlow — entraînement local uniquement
+├── runtime.txt               # python-3.12 (Streamlit Cloud)
+├── Rapport_Projet_Sommeil_EOG_IA.docx   # Synthèse projet (optionnel)
 └── README.md
 ```
 
 ---
 
-## 🔄 Pipeline de données
+## 🔄 Pipelines de données
+
+Deux chemins coexistent selon l'usage :
+
+### A. Entraînement (`train.py` / `train_npu.py`)
 
 ```
- EDF brut (100 Hz ou plus)
+*_Signal.edf + *_Labels.edf
         │
         ▼
-┌────────────────────┐
-│ data_loader.py     │   MNE : lecture EDF + annotations hypnogramme
-│  create_dataset()  │   → découpage en époques de 30 s (3000 points)
-└────────┬───────────┘
-         ▼
-┌────────────────────┐
-│ preprocessing.py   │   Resample 100 Hz · Filtre FIR 0.5-35 Hz
-│ clean_eog_signal() │   Normalisation z-score + clip ±3σ
-└────────┬───────────┘
-         ▼
-┌────────────────────┐
-│ architecture.py    │   CNN-LSTM :
-│ build_cnn_lstm…()  │   Conv1D(64) → Conv1D(128) → BiLSTM(64) → Dense(5)
-└────────┬───────────┘
-         ▼
-┌────────────────────┐
-│ train.py           │   Entraînement multi-sujets + pondération de classes
-│                    │   Export .keras puis conversion OpenVINO FP16
-└────────┬───────────┘
-         ▼
-┌────────────────────┐
-│ dashboard.py       │   Streamlit : inférence temps réel via OpenVINO
-│                    │   Affichage hypnogramme IA vs vérité-terrain
-└────────────────────┘
+  create_dataset()          # data_loader.py — MNE
+        │                   Canal « EOG horizontal », filtre 0.3–35 Hz
+        │                   Époques 30 s · labels AASM (event_id MNE)
+        ▼
+  Z-score par patient · fusion multi-sujets
+        │
+        ├── train.py        → sleep_model_v1.keras      (CNN + Bi-LSTM)
+        └── train_npu.py    → sleep_model_cnn.keras
+                            → sleep_model_npu.xml/.bin  (export OpenVINO FP16)
 ```
+
+### B. Inférence dashboard (`app/dashboard.py`)
+
+```
+*_Signal.edf  (upload ou data/raw/)
+        │
+        ▼
+  apply_preprocessing()     # preprocessing.py
+        │                   Resample 100 Hz · canal EOG (nom contenant « EOG »)
+        │                   Filtre 0.5–35 Hz · z-score · clip ±3σ
+        ▼
+  Découpage époques 30 s → tenseur (N, 3000, 1)
+        │
+        ▼
+  OpenVINO (sleep_model_npu.xml) — batch 64
+        │
+        ├── Hypnogramme · métriques cliniques · export CSV
+        └── Optionnel : *_Labels.edf → load_and_sync_labels() + parse_stage()
+```
+
+> **Note :** le prétraitement d'entraînement (`create_dataset`) et celui du dashboard (`apply_preprocessing`) ne sont pas strictement identiques (canal fixe vs détection EOG, bandes passantes légèrement différentes). L'inférence suit le pipeline du dashboard.
 
 ---
 
 ## 🧠 Modèles disponibles
 
-Deux architectures co-existent dans `src/architecture.py` :
+Deux architectures dans `src/architecture.py` :
 
-### A. CNN + Bi-LSTM (CPU only — précision maximale)
+### A. CNN + Bi-LSTM (CPU — `sleep_model_v1.keras`)
 
 | Bloc | Couches | Rôle |
 |------|---------|------|
-| **CNN** | `Conv1D(64,k=3)` → `BN` → `MaxPool` → `Conv1D(128,k=3)` → `BN` → `MaxPool` | Motifs morphologiques |
-| **Bi-LSTM** | `Bidirectional(LSTM(64))` | Dépendances temporelles |
-| **Classifieur** | `Dense(64)` → `Dense(5, softmax)` | Probabilités stades |
+| **CNN** | `Conv1D(64,k=3)` → `BN` → `MaxPool` → `Conv1D(128,k=3)` → `BN` → `MaxPool` | Motifs locaux |
+| **Bi-LSTM** | `Bidirectional(LSTM(64))` | Contexte temporel |
+| **Classifieur** | `Dense(64)` → `Dense(5, softmax)` | 5 stades AASM |
 
-→ **~ 91.6 % accuracy** sur Patient_01.
-→ Incompatible NPU (les ops `Loop` / `ReverseSequence` du Bi-LSTM ne sont pas supportées par le NPU 3720).
+→ **~91.6 % accuracy** sur Patient_01 (indicatif).  
+→ Incompatible NPU (ops `Loop` / `ReverseSequence`).
 
-### B. CNN 1D pur (NPU-compatible — accélération matérielle)
+### B. CNN 1D pur (NPU — `sleep_model_npu.xml`)
 
-| Bloc | Couches | Sortie |
+| Bloc | Couches | Sortie indicative |
 |---|---|---|
 | 1 | `Conv1D(64, k=11)` → `BN` → `MaxPool(4)` | (750, 64) |
 | 2 | `Conv1D(128, k=7)` → `BN` → `MaxPool(4)` | (187, 128) |
@@ -118,9 +130,9 @@ Deux architectures co-existent dans `src/architecture.py` :
 | 4 | `Conv1D(256, k=3)` → `BN` → `MaxPool(2)` | (23, 256) |
 | Tête | `GlobalAvgPool1D` → `Dense(128)` → `Dense(5, softmax)` | (5,) |
 
-- **455 k paramètres** (1.74 MB) · **Entrée statique** `(64, 3000, 1)`
-- **88.4 % accuracy** moyenne sur 4 patients · **5 650 ép/s sur NPU** ⚡
-- Toutes les ops sont supportées par le NPU 3720 : `Convolution`, `MaxPool`, `BN`, `ReLU`, `ReduceMean`, `MatMul`, `Softmax`
+- **~455 k paramètres** · entrée statique **`(64, 3000, 1)`** (batch 64 × 30 s × 100 Hz)
+- **~88.4 % accuracy** moyenne sur 4 patients · **~5 650 ép/s sur NPU**
+- Ops supportées NPU : `Convolution`, `MaxPool`, `BN`, `ReLU`, `ReduceMean`, `MatMul`, `Softmax`
 
 ---
 
@@ -132,80 +144,78 @@ python -m venv .venv
 # source .venv/bin/activate     # Linux / macOS
 
 pip install -r requirements.txt
-# Optionnel — entraînement / évaluation Keras (TensorFlow) :
+# Entraînement / évaluation Keras (local uniquement) :
 # pip install -r requirements-train.txt
+```
+
+Lancer le dashboard :
+
+```bash
+streamlit run app/dashboard.py
 ```
 
 ---
 
 ## ☁️ Déploiement (Streamlit Community Cloud)
 
-Le projet est prêt pour **[Streamlit Community Cloud](https://streamlit.io/cloud)** : le dashboard n’utilise que **OpenVINO + MNE + NumPy/Pandas** (`requirements.txt`), sans TensorFlow à l’exécution.
-
-### Prérequis
+Le dashboard n'utilise que **OpenVINO + MNE + NumPy/Pandas/Streamlit** (`requirements.txt`), sans TensorFlow à l'exécution.
 
 | Élément | Détail |
 |--------|--------|
-| Dépôt | **GitHub** (public pour l’offre Community) avec le code et les poids |
-| Fichier principal | `app/dashboard.py` (à indiquer dans les paramètres de l’app) |
-| Dépendances | `requirements.txt` à la racine (détecté automatiquement) |
-| Python | **3.12 recommandé** : `runtime.txt` contient `python-3.12`. Sur Community Cloud, le menu **Advanced settings** lors du déploiement peut **ignorer** `runtime.txt` — choisir explicitement **Python 3.12** (éviter **3.14** : pas de wheels pour d’anciennes versions d’OpenVINO, et build `pandas` depuis les sources). |
-| Modèles | Les fichiers `models/sleep_model_npu.xml` et `models/sleep_model_npu.bin` doivent être **versionnés** (ou fournis via stockage externe + script de téléchargement). Sans eux, le message *Model file not found* s’affiche. |
-| Accélération | **Pas de NPU** sur Cloud : seuls **CPU** (et éventuellement **GPU** selon l’offre) sont disponibles. Choisir **CPU** ou **AUTO** dans la barre latérale. |
+| Fichier principal | `app/dashboard.py` |
+| Python | **3.12** — `runtime.txt` ; choisir **3.12** dans Advanced settings (éviter 3.14) |
+| Modèles | `models/sleep_model_npu.xml` et `.bin` doivent être présents dans le dépôt (ou LFS / URL) |
+| Accélération | **Pas de NPU** sur Cloud → **CPU** ou **AUTO** |
 
-### Étapes rapides
+### Problèmes fréquents Cloud
 
-1. Pousser le dépôt sur GitHub (inclure `models/` si les binaires ne dépassent pas la limite du dépôt ; au-delà, utiliser [Git LFS](https://git-lfs.com/) ou héberger les poids ailleurs).
-2. Sur [share.streamlit.io](https://share.streamlit.io), **New app** → choisir le dépôt, la branche, et **Main file path** : `app/dashboard.py`.
-3. Lancer le déploiement ; le premier build peut prendre quelques minutes (téléchargement des wheels, etc.).
-
-Aucun secret n’est requis pour l’application telle quelle. Les réglages globaux par défaut sont dans [`.streamlit/config.toml`](.streamlit/config.toml).
-
-### Problème « Error installing requirements » (OpenVINO / pandas / uv)
-
-Typiquement : l’environnement Cloud utilise **Python 3.14** par défaut → `openvino==2024.0.0` n’a **pas de wheel** pour cette ABI → échec du premier installeur (`uv`), puis `pip` tente de **compiler** `numpy` / `pandas` depuis les sources → erreurs (`pkg_resources`, etc.).
-
-**À faire :**
-
-1. Mettre à jour le dépôt avec le `requirements.txt` actuel (OpenVINO **≥ 2024.4**, `pandas` **≥ 2.1`, `setuptools`).
-2. Dans **Manage app** → **Settings** (ou en **redéployant** l’app), ouvrir **Advanced settings** et fixer **Python version** sur **3.12** (ou **3.11**). Si l’interface ne permet pas de changer la version, **supprimer l’app** et la recréer pour choisir la version au moment du déploiement.
-3. Enregistrer / relancer le déploiement.
-
-Les fichiers **IR OpenVINO** (`sleep_model_npu.xml` / `.bin`) exportés avec une version antérieure restent en général lisibles par un runtime OpenVINO plus récent (inférence CPU).
-
-**Erreur** `cannot import name 'sph_harm' from 'scipy.special'` **lors de la lecture EDF** : versions récentes de **SciPy (≥ ~1.14)** ne fournissent plus ce symbole comme MNE 1.6 l’attend. Le `requirements.txt` impose **`scipy>=1.11,<1.14`**. Après mise à jour du dépôt, redéployer l’app.
+- **OpenVINO / pandas / Python 3.14** : utiliser `requirements.txt` actuel (`openvino>=2024.4`, `pandas>=2.1`, `setuptools`) et **Python 3.12**.
+- **`sph_harm` / SciPy** : MNE 1.6 exige **`scipy>=1.11,<1.14`** (déjà borné dans `requirements.txt`).
 
 ---
 
 ## 📥 Données
 
-Placer les fichiers **EDF** dans `data/raw/` en respectant la convention :
+Convention dans `data/raw/` :
 
 ```
-data/raw/Patient_01_Signal.edf     # Signal polysomnographique (contient un canal EOG)
-data/raw/Patient_01_Labels.edf     # Hypnogramme annoté par un expert
+data/raw/Patient_01_Signal.edf     # Signal PSG (canal EOG pour l'entraînement : « EOG horizontal »)
+data/raw/Patient_01_Labels.edf     # Hypnogramme expert (annotations)
 ```
 
-Formats compatibles : **Sleep-EDF Expanded** (PhysioNet) ou tout EDF contenant un canal `EOG …`.
+Jeu fourni : **Patient_01, 02, 11, 12**. Formats compatibles : **Sleep-EDF Expanded** (PhysioNet) ou tout EDF avec canal EOG et annotations de stades.
 
 ---
 
 ## 🏋️ Entraînement
 
-### Variante CNN 1D (NPU)
+Dataset **Sleep-EDF Expanded** (PhysioNet) : placer l’archive décompressée dans  
+`data/sleep-edf-database-expanded-1.0.0/` (sous-dossiers `sleep-cassette/` et `sleep-telemetry/`).  
+Les 4 fichiers `data/raw/` restent inclus automatiquement (**201 sujets** au total).
+
+Depuis la **racine** du projet (TensorFlow requis : `pip install -r requirements-train.txt`) :
+
+### Variante CNN 1D (NPU + export OpenVINO)
+
 ```bash
 python src/train_npu.py
 ```
-Sorties :
-- `models/sleep_model_cnn.keras`
-- `models/sleep_model_npu.xml` + `.bin` (IR FP16, batch statique = 64)
-- Test automatique de compilation sur tous les devices détectés en fin de run.
+
+- **1ᵉʳ run** : charge ~197 enregistrements Sleep-EDF + `raw/` (~30 min), met en cache `data/processed/sleep_edf_corpus.npz`
+- **Split par sujet en 3** (≈70 % train · 15 % val · 15 % **test hold-out jury**) — le jeu **test** n’est **jamais** utilisé à l’entraînement
+- Manifeste : `data/processed/subject_split.json` (liste des sujets pour la démo devant le jury)
+- Métrique principale : **F1 macro** sur validation ; rapport jury : `python src/evaluate_holdout.py` → `models/metrics_holdout_test.json`
+- Sorties : `sleep_model_cnn.keras`, `sleep_model_cnn_best.keras`, `sleep_model_npu.xml` / `.bin`, `models/metrics_val.json`
 
 ### Variante CNN + Bi-LSTM (CPU)
+
 ```bash
 python src/train.py
 ```
-Sortie : `models/sleep_model_v1.keras`
+
+Sortie : `models/sleep_model_v1.keras` (pas d'export OpenVINO automatique).
+
+Les deux scripts chargent tous les couples `*Signal.edf` / `*Labels.edf` via `create_dataset()` et appliquent une **pondération de classes** (`class_weight`) pour le déséquilibre des stades.
 
 ---
 
@@ -216,39 +226,50 @@ from src.evaluate import evaluate_model
 evaluate_model("models/sleep_model_v1.keras", X_test, y_test)
 ```
 
-Produit :
-- Le `classification_report` par classe (précision / rappel / F1)
-- Une matrice de confusion (heatmap seaborn)
+Produit un `classification_report` et une matrice de confusion (matplotlib / seaborn).
 
 ---
 
-## 🖥️ Dashboard
+## 🖥️ Dashboard (DeepSleep AI)
 
 ```bash
 streamlit run app/dashboard.py
 ```
 
 Fonctionnalités :
-- **Sélecteur de thème** : `System` (suit l'OS) · `Light` · `Dark`
-- **Sélecteur de device matériel** : NPU / GPU / CPU / AUTO (auto-détecté)
-- **Upload** d'un EDF (signal, + optionnel labels pour validation)
-- ou sélection d'un **patient local** dans `data/raw/`
-- Inférence par batches de 64 (compatible NPU statique)
-- 5 onglets : Hypnogram · Sleep Architecture · AI vs Expert · Clinical Report · Technical
-- 10 KPIs cliniques : TST, Sleep Efficiency, REM%, Deep Sleep%, Sleep Latency, WASO, Awakenings, etc.
-- Export CSV des prédictions par époque
 
-### Thèmes
+- **Thème** : System · Light · Dark (`app/ui_theme.py`, variables `--dps-*`)
+- **Matériel** : NPU / GPU / CPU / AUTO (OpenVINO)
+- **Données** : upload EDF signal (+ labels optionnels) ou base `data/raw/`
+- **Inférence** : batches de 64 · modèle `sleep_model_npu.xml`
+- **Onglets** : Hypnogram · Sleep Architecture · AI vs Expert · Clinical Report · Technical
+- **KPIs** : TST, efficacité du sommeil, latences, % stades, éveils, cycles, etc.
+- **Export** : CSV époque par époque
+
+### Thèmes (palette `ui_theme.py`)
 
 | Mode | Comportement |
 |---|---|
-| **System** | Suit la préférence de l'OS via `prefers-color-scheme` (clair par défaut, bascule en sombre si l'OS est en sombre) |
-| **Light** | Palette clinique claire — fond gris froid, primaire bleu marine `#1B4965`, accent bleu médian `#2C7DA0` |
-| **Dark** | Palette clinique sombre — fond bleu nuit `#0B1220`, primaire bleu pâle `#5FA8D3`, accent turquoise `#62D2C4` |
+| **System** | Clair par défaut ; `@media (prefers-color-scheme: dark)` bascule le thème sombre |
+| **Light** | Fond `#EEF1F5`, primaire `#0C4A6E`, accent `#1E5F8A` |
+| **Dark** | Fond `#0B1020`, primaire `#5BA3D0`, accent `#5EB8A8` |
 
-Les trois thèmes partagent les mêmes composants (cartes patient, métriques, chips de statut, hypnogramme, matrice de confusion). Seules les variables CSS changent — aucun rerun n'est nécessaire pour la cohérence visuelle.
+Couleurs des **stades** (hypnogramme / légende) : fixes AASM — W `#EAB308`, N1 `#93C5E8`, N2 `#3B82B6`, N3 `#0C4A6E`, REM `#B91C1C`.
 
-L’interface du dashboard intègre des **media queries** (`@media (max-width: 900px / 768px / 480px)`) : en vue téléphone, les `st.columns` s’empilent en une colonne, l’en-tête clinique se replie, les onglets défilent horizontalement, les zones de toucher ciblent **≥ 44 px** de hauteur, et les champs de saisie utilisent **16 px** de police côté iOS pour limiter le zoom sur focus. Les bords sûrs (`safe-area-inset`) sont pris en compte pour encoches / barre d’accueil.
+Interface **responsive** (breakpoints 900 / 768 / 480 px) : colonnes empilées sur mobile, onglets scrollables, zones tactiles ≥ 44 px.
+
+---
+
+## 📄 Rapport de synthèse (optionnel)
+
+Générer ou régénérer le document Word à la racine :
+
+```bash
+pip install python-docx   # si absent
+python scripts/generate_rapport_prof_docx.py
+```
+
+→ `Rapport_Projet_Sommeil_EOG_IA.docx`
 
 ---
 
@@ -256,12 +277,12 @@ L’interface du dashboard intègre des **media queries** (`@media (max-width: 9
 
 | Domaine | Outils |
 |---|---|
-| Signal biomédical | `MNE-Python` |
-| Deep Learning | `TensorFlow / Keras` |
-| Inférence optimisée | `OpenVINO` (Intel AI Boost / NPU) |
-| ML classique | `scikit-learn` |
-| Visualisation | `matplotlib`, `seaborn` |
-| UI | `Streamlit` |
+| Signal biomédical | MNE-Python 1.6 |
+| Deep Learning (entraînement) | TensorFlow / Keras (`requirements-train.txt`) |
+| Inférence optimisée | OpenVINO ≥ 2024.4 (NPU / GPU / CPU) |
+| ML classique | scikit-learn |
+| Visualisation | matplotlib |
+| UI | Streamlit |
 
 ---
 

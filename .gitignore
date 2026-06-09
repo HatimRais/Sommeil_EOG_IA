@@ -58,6 +58,15 @@ temp*.edf
 # Data processing outputs
 /data/processed/
 
+# Sleep-EDF corpus (~8 Go) — télécharger localement, ne pas versionner
+/data/sleep-edf-database-expanded-1.0.0/
+
+# Staging Kaggle upload (copie locale du cache + checkpoints)
+/kaggle_upload/
+
+# Checkpoints intermédiaires (le .keras final suffit dans models/)
+models/*_best.keras
+
 # Generated model export directories
 /models/export_npu/
 /models/saved_model_temp/
