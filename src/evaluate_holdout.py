@@ -13,9 +13,9 @@ import os
 import sys
 
 import numpy as np
-import tensorflow as tf
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from keras_compat import load_cnn_npu_keras
 from metrics import compute_metrics, print_metrics, save_metrics
 from splits import load_split_manifest
 
@@ -81,7 +81,7 @@ def main():
         raise FileNotFoundError("Modèle Keras introuvable dans models/")
 
     print(f"Modèle : {model_path}")
-    model = tf.keras.models.load_model(model_path)
+    model = load_cnn_npu_keras(model_path)
     y_pred = np.argmax(model.predict(X_test, batch_size=BATCH, verbose=0), axis=1)
 
     metrics = compute_metrics(y_test, y_pred)

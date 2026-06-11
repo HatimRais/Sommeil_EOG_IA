@@ -14,9 +14,15 @@ $files = @(
     @{ Src = Join-Path $src "sleep_edf_corpus_meta.json"; Dst = "sleep_edf_corpus_meta.json" },
     @{ Src = Join-Path $src "subject_split.json"; Dst = "subject_split.json" }
 )
+$cnnKeras = Join-Path "models" "sleep_model_cnn_best.keras"
+$cnnNpz = Join-Path "models" "sleep_model_cnn_best_weights.npz"
+if ((Test-Path $cnnKeras) -and -not (Test-Path $cnnNpz)) {
+    Write-Host "Export weights.npz pour Kaggle..." -ForegroundColor DarkGray
+    .\.venv\Scripts\python.exe scripts\export_cnn_weights_npz.py
+}
 $checkpoints = @(
     @{ Src = Join-Path "models" "sleep_model_v1_best.keras"; Dst = "sleep_model_v1_best.keras" },
-    @{ Src = Join-Path "models" "sleep_model_cnn_best.keras"; Dst = "sleep_model_cnn_best.keras" }
+    @{ Src = $cnnNpz; Dst = "sleep_model_cnn_best_weights.npz" }
 )
 
 New-Item -ItemType Directory -Force -Path $dst | Out-Null
