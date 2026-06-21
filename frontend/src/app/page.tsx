@@ -1,0 +1,89 @@
+"use client";
+
+import { HeaderBar } from "@/components/layout/Header";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { WelcomeLanding } from "@/components/landing/Welcome";
+import { MetricsGrid, PatientCard } from "@/components/results/PatientCard";
+import { ResultsTabs } from "@/components/results/ResultsTabs";
+import { checkHealth } from "@/lib/api";
+import type { AnalysisResult } from "@/types/analysis";
+import { AlertCircle, Wifi, WifiOff } from "lucide-react";
+import { useEffect, useState } from "react";
+
+export default function DashboardPage() {
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkHealth().then(setApiOnline);
+    const interval = setInterval(() => checkHealth().then(setApiOnline), 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex min-h-screen flex-col lg:flex-row">
+      <Sidebar
+        onAnalyze={setResult}
+        onError={setError}
+        onLoading={setLoading}
+        loading={loading}
+      />
+
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-6xl p-4 md:p-6 lg:p-8">
+          <HeaderBar result={result} />
+
+          {apiOnline === false && (
+            <div className="mb-4 flex items-center gap-3 rounded-lg border border-[var(--dps-chip-alert-bd)] bg-[var(--dps-chip-alert-bg)] p-4 text-sm text-[var(--dps-chip-alert-fg)]">
+              <WifiOff className="h-5 w-5 shrink-0" />
+              <div>
+                <strong>API hors ligne.</strong> Démarrez le backend Python :{" "}
+                <code className="rounded bg-black/10 px-1.5 py-0.5 text-xs">
+                  uvicorn src.api.main:app --reload --port 8000
+                </code>
+              </div>
+            </div>
+          )}
+
+          {apiOnline === true && (
+            <div className="mb-4 flex items-center gap-2 text-xs text-[var(--dps-success)]">
+              <Wifi className="h-3.5 w-3.5" />
+              API connectée
+            </div>
+          )}
+
+          {error && (
+            <div className="mb-4 flex items-center gap-3 rounded-lg border border-[var(--dps-chip-alert-bd)] bg-[var(--dps-chip-alert-bg)] p-4 text-sm text-[var(--dps-chip-alert-fg)]">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {loading && (
+            <div className="mb-6 space-y-4">
+              <div className="skeleton h-24 rounded-xl" />
+              <div className="grid grid-cols-5 gap-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="skeleton h-28 rounded-xl" />
+                ))}
+              </div>
+              <div className="skeleton h-64 rounded-xl" />
+            </div>
+          )}
+
+          {!loading && !result && <WelcomeLanding />}
+
+          {!loading && result && (
+            <div className="space-y-8">
+              <PatientCard patient={result.patient} />
+              <MetricsGrid metrics={result.metrics} cycles={result.cycles} />
+              <ResultsTabs result={result} />
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

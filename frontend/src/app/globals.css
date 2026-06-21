@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+/* DeepSleep AI — medical design tokens (from ui_theme.py) */
+:root {
+  --dps-bg: #eef1f5;
+  --dps-surface: #ffffff;
+  --dps-surface-2: #f4f6f9;
+  --dps-border: #d2dae3;
+  --dps-border-soft: #e4e9ef;
+  --dps-text: #0f172a;
+  --dps-text-muted: #5c6b7a;
+  --dps-primary: #0c4a6e;
+  --dps-primary-mid: #1e5f8a;
+  --dps-primary-soft: #e0edf4;
+  --dps-accent: #1e5f8a;
+  --dps-success: #0f766e;
+  --dps-warning: #a16207;
+  --dps-danger: #b91c1c;
+  --dps-on-primary: #ffffff;
+  --dps-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --dps-shadow-lg: 0 4px 14px rgba(15, 23, 42, 0.08);
+  --dps-sb-bg: #e4e8ee;
+  --dps-sb-surface: #ffffff;
+  --dps-sb-border: #c8d0da;
+  --dps-sb-text: #0f172a;
+  --dps-sb-muted: #5c6b7a;
+  --dps-sb-accent: #0c4a6e;
+  --dps-header-from: #0c4a6e;
+  --dps-header-to: #1e5f8a;
+  --dps-header-text: #ffffff;
+  --dps-chip-norm-bg: #ecfdf5;
+  --dps-chip-norm-fg: #047857;
+  --dps-chip-norm-bd: #6ee7b7;
+  --dps-chip-warn-bg: #fffbeb;
+  --dps-chip-warn-fg: #a16207;
+  --dps-chip-warn-bd: #fcd34d;
+  --dps-chip-alert-bg: #fef2f2;
+  --dps-chip-alert-fg: #b91c1c;
+  --dps-chip-alert-bd: #fca5a5;
+  --dps-chip-info-bg: #eff6ff;
+  --dps-chip-info-fg: #1d4ed8;
+  --dps-chip-info-bd: #93c5fd;
+}
+
+.dark {
+  --dps-bg: #0b1020;
+  --dps-surface: #121a2c;
+  --dps-surface-2: #182236;
+  --dps-border: #2a3447;
+  --dps-border-soft: #1e2838;
+  --dps-text: #e8edf3;
+  --dps-text-muted: #94a3b8;
+  --dps-primary: #5ba3d0;
+  --dps-primary-mid: #6bb8d9;
+  --dps-primary-soft: #1a3048;
+  --dps-accent: #5eb8a8;
+  --dps-success: #2dd4bf;
+  --dps-warning: #fbbf24;
+  --dps-danger: #f87171;
+  --dps-on-primary: #0b1020;
+  --dps-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.28);
+  --dps-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --dps-sb-bg: #070b14;
+  --dps-sb-surface: #121a2c;
+  --dps-sb-border: #2a3447;
+  --dps-sb-text: #e8edf3;
+  --dps-sb-muted: #94a3b8;
+  --dps-sb-accent: #5eb8a8;
+  --dps-header-from: #0c4a6e;
+  --dps-header-to: #1e5f8a;
+  --dps-header-text: #f8fafc;
+  --dps-chip-norm-bg: #0b2215;
+  --dps-chip-norm-fg: #6ee7b7;
+  --dps-chip-norm-bd: #14532d;
+  --dps-chip-warn-bg: #1e1808;
+  --dps-chip-warn-fg: #fcd34d;
+  --dps-chip-warn-bd: #854d0e;
+  --dps-chip-alert-bg: #2a1212;
+  --dps-chip-alert-fg: #fca5a5;
+  --dps-chip-alert-bd: #7f1d1d;
+  --dps-chip-info-bg: #0c1826;
+  --dps-chip-info-fg: #93c5fd;
+  --dps-chip-info-bd: #1e3a8a;
+}
+
+@theme inline {
+  --color-dps-bg: var(--dps-bg);
+  --color-dps-surface: var(--dps-surface);
+  --color-dps-surface-2: var(--dps-surface-2);
+  --color-dps-border: var(--dps-border);
+  --color-dps-text: var(--dps-text);
+  --color-dps-text-muted: var(--dps-text-muted);
+  --color-dps-primary: var(--dps-primary);
+  --color-dps-primary-mid: var(--dps-primary-mid);
+  --color-dps-primary-soft: var(--dps-primary-soft);
+  --color-dps-accent: var(--dps-accent);
+  --color-dps-success: var(--dps-success);
+  --color-dps-warning: var(--dps-warning);
+  --color-dps-danger: var(--dps-danger);
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--dps-bg);
+  color: var(--dps-text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--dps-surface-2);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--dps-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dps-primary-mid);
+}
+
+/* Animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.45s ease-out forwards;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--dps-surface-2) 25%,
+    var(--dps-border-soft) 50%,
+    var(--dps-surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}

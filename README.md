@@ -29,10 +29,16 @@ Le **dashboard** charge uniquement le modèle **OpenVINO** (`models/sleep_model_
 Sommeil_EOG_IA/
 │
 ├── app/
-│   ├── dashboard.py          # UI Streamlit : upload EDF, inférence OpenVINO, rapports cliniques
-│   └── ui_theme.py           # Tokens CSS (clair / sombre / système) + styles sidebar
+│   ├── dashboard.py          # UI Streamlit (legacy)
+│   └── ui_theme.py           # Tokens CSS — source du thème Next.js
+│
+├── frontend/                 # Interface Next.js (React 19 · Tailwind)
+│   └── src/                  # Composants, graphiques Recharts, API client
 │
 ├── src/
+│   ├── api/
+│   │   ├── main.py           # FastAPI REST (backend Next.js)
+│   │   └── service.py        # Logique d'analyse partagée
 │   ├── data_loader.py        # create_dataset() (entraînement) · load_and_sync_labels() (dashboard)
 │   ├── preprocessing.py      # apply_preprocessing() — pipeline inférence dashboard (100 Hz)
 │   ├── architecture.py       # build_cnn_lstm_model() · build_cnn_npu_model()
@@ -53,6 +59,7 @@ Sommeil_EOG_IA/
 │
 ├── .streamlit/config.toml    # Thème Streamlit de base (complété par ui_theme.py)
 ├── requirements.txt          # Dashboard + inférence (sans TensorFlow)
+├── requirements-api.txt      # FastAPI + uvicorn (backend Next.js)
 ├── requirements-train.txt      # TensorFlow — entraînement local uniquement
 ├── runtime.txt               # python-3.12 (Streamlit Cloud)
 ├── Rapport_Projet_Sommeil_EOG_IA.docx   # Synthèse projet (optionnel)
@@ -230,7 +237,40 @@ Produit un `classification_report` et une matrice de confusion (matplotlib / sea
 
 ---
 
-## 🖥️ Dashboard (DeepSleep AI)
+## 🖥️ Interface Next.js (recommandée)
+
+Interface moderne **React / Next.js** avec thème médical, graphiques interactifs et mode clair/sombre.
+
+### 1. Backend API (FastAPI)
+
+```bash
+pip install -r requirements.txt -r requirements-api.txt
+uvicorn src.api.main:app --reload --port 8000
+```
+
+Ou sous Windows : `.\scripts\run_api.ps1`
+
+### 2. Frontend Next.js
+
+```bash
+cd frontend
+cp .env.local.example .env.local   # ou copier manuellement
+npm install
+npm run dev
+```
+
+Ouvrir [http://localhost:3000](http://localhost:3000)
+
+| Composant | Technologie |
+|---|---|
+| UI | Next.js 16 · React 19 · Tailwind CSS 4 |
+| Thème | next-themes (clair / sombre / système) — tokens `ui_theme.py` |
+| Graphiques | Recharts (hypnogramme, architecture, matrice) |
+| API | FastAPI · OpenVINO · MNE |
+
+---
+
+## 🖥️ Dashboard Streamlit (legacy)
 
 ```bash
 streamlit run app/dashboard.py
