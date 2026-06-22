@@ -3,6 +3,7 @@
 import { HeaderBar } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { WelcomeLanding } from "@/components/landing/Welcome";
+import { CnnArchitectureLoader } from "@/components/loading/CnnArchitectureLoader";
 import { MetricsGrid, PatientCard } from "@/components/results/PatientCard";
 import { ResultsTabs } from "@/components/results/ResultsTabs";
 import { checkHealth } from "@/lib/api";
@@ -39,10 +40,24 @@ export default function DashboardPage() {
             <div className="mb-4 flex items-center gap-3 rounded-lg border border-[var(--dps-chip-alert-bd)] bg-[var(--dps-chip-alert-bg)] p-4 text-sm text-[var(--dps-chip-alert-fg)]">
               <WifiOff className="h-5 w-5 shrink-0" />
               <div>
-                <strong>API hors ligne.</strong> Démarrez le backend Python :{" "}
-                <code className="rounded bg-black/10 px-1.5 py-0.5 text-xs">
-                  uvicorn src.api.main:app --reload --port 8000
-                </code>
+                <strong>API hors ligne.</strong>{" "}
+                {process.env.NEXT_PUBLIC_API_URL &&
+                !/localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_API_URL) ? (
+                  <>
+                    Impossible de joindre le backend à{" "}
+                    <code className="rounded bg-black/10 px-1.5 py-0.5 text-xs">
+                      {process.env.NEXT_PUBLIC_API_URL}
+                    </code>
+                    . Vérifiez que l&apos;API Python est déployée et accessible en HTTPS.
+                  </>
+                ) : (
+                  <>
+                    Démarrez le backend Python :{" "}
+                    <code className="rounded bg-black/10 px-1.5 py-0.5 text-xs">
+                      uvicorn src.api.main:app --reload --port 8000
+                    </code>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -61,17 +76,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {loading && (
-            <div className="mb-6 space-y-4">
-              <div className="skeleton h-24 rounded-xl" />
-              <div className="grid grid-cols-5 gap-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="skeleton h-28 rounded-xl" />
-                ))}
-              </div>
-              <div className="skeleton h-64 rounded-xl" />
-            </div>
-          )}
+          {loading && <CnnArchitectureLoader />}
 
           {!loading && !result && <WelcomeLanding />}
 

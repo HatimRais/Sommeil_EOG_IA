@@ -167,3 +167,171 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* ── CNN architecture loader ── */
+.cnn-loader-inner {
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, var(--dps-primary-soft), transparent 70%);
+}
+
+.cnn-loader-grid {
+  background-image:
+    linear-gradient(var(--dps-border-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--dps-border-soft) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 70% 80% at 50% 45%, black 20%, transparent 75%);
+}
+
+.cnn-arch-svg .cnn-label {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--dps-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.cnn-arch-svg .cnn-sublabel {
+  font-size: 8.5px;
+  fill: var(--dps-text-muted);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.cnn-arch-svg .cnn-micro {
+  font-size: 7.5px;
+  fill: var(--dps-text-muted);
+  opacity: 0.75;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.cnn-arch-svg .cnn-badge {
+  font-size: 8px;
+  font-weight: 600;
+  fill: var(--dps-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.cnn-arch-svg .cnn-stage-label {
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+@keyframes cnn-ambient-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes cnn-backbone-flow {
+  to { stroke-dashoffset: -40; }
+}
+
+@keyframes cnn-wave-drift {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+@keyframes cnn-feature-shimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15); }
+}
+
+@keyframes cnn-kernel-blink {
+  0%, 100% { fill-opacity: 0.15; }
+  50% { fill-opacity: 0.55; }
+}
+
+@keyframes cnn-gap-breathe {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+@keyframes cnn-dense-twinkle {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+@keyframes cnn-output-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+
+@keyframes cnn-core-glow {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes cnn-status-blink {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--dps-accent); }
+  50% { opacity: 0.5; box-shadow: 0 0 8px 2px var(--dps-accent); }
+}
+
+@keyframes cnn-progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.cnn-ambient {
+  animation: cnn-ambient-pulse 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.cnn-backbone {
+  animation: cnn-backbone-flow 3s linear infinite;
+}
+
+.cnn-wave-path {
+  animation: cnn-wave-drift 2.8s ease-in-out infinite;
+}
+
+.cnn-wave-path-alt {
+  animation: cnn-wave-drift 3.2s ease-in-out infinite reverse;
+}
+
+.cnn-feature-map {
+  animation: cnn-feature-shimmer 2.4s ease-in-out infinite;
+}
+
+.cnn-kernel-cell {
+  animation: cnn-kernel-blink 1.8s ease-in-out infinite;
+}
+
+.cnn-gap {
+  animation: cnn-gap-breathe 2.6s ease-in-out infinite;
+}
+
+.cnn-dense-node {
+  animation: cnn-dense-twinkle 2s ease-in-out infinite;
+}
+
+.cnn-output-ring {
+  animation: cnn-output-pulse 2.2s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.cnn-output-core {
+  animation: cnn-core-glow 1.6s ease-in-out infinite;
+}
+
+.cnn-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dps-accent);
+  animation: cnn-status-blink 1.4s ease-in-out infinite;
+}
+
+.cnn-progress-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--dps-border-soft);
+  overflow: hidden;
+}
+
+.cnn-progress-bar {
+  height: 100%;
+  width: 40%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--dps-primary), var(--dps-accent), var(--dps-primary));
+  animation: cnn-progress-slide 1.8s ease-in-out infinite;
+}

@@ -270,7 +270,57 @@ Ouvrir [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 🖥️ Dashboard Streamlit (legacy)
+## ☁️ Déploiement Vercel (frontend)
+
+Le frontend Next.js se déploie sur **Vercel**. L'API Python (OpenVINO + MNE) doit être hébergée **séparément** — Railway, Render, Fly.io ou une VM.
+
+### 1. Frontend sur Vercel
+
+| Paramètre | Valeur |
+|---|---|
+| **Root Directory** | `frontend` |
+| **Framework** | Next.js (auto-détecté) |
+| **Build Command** | `npm run build` |
+| **Variable d'environnement** | `NEXT_PUBLIC_API_URL` = URL HTTPS de l'API (sans `/` final) |
+
+Étapes :
+
+1. [vercel.com/new](https://vercel.com/new) → importer le dépôt GitHub
+2. **Root Directory** → `frontend`
+3. **Environment Variables** → ajouter `NEXT_PUBLIC_API_URL`
+4. Deploy
+
+Les previews Vercel (`*.vercel.app`) sont autorisées automatiquement par l'API (regex CORS).
+
+### 2. Backend API (hors Vercel)
+
+L'API nécessite Python 3.12, OpenVINO, MNE et les fichiers :
+
+- `models/sleep_model_npu.xml` + `.bin` (~1 Mo)
+- `data/raw/*.edf` (optionnel, pour le sélecteur de patients)
+
+```bash
+pip install -r requirements.txt -r requirements-api.txt
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+```
+
+Variables d'environnement API :
+
+| Variable | Exemple | Rôle |
+|---|---|---|
+| `CORS_ORIGINS` | `https://deepsleep-ai.vercel.app` | Origines supplémentaires (domaine custom) |
+
+> En production, l'API doit être en **HTTPS** (Vercel est HTTPS ; mixed content bloqué sinon).
+
+### 3. Vérification
+
+- Frontend : page charge, statut « API connectée » si le backend répond
+- Upload EDF ou sélection patient → hypnogramme et métriques
+- Export CSV → colonnes séparées dans Excel FR (`;` + BOM UTF-8)
+
+---
+
+## ☁️ Déploiement (Streamlit Community Cloud)
 
 ```bash
 streamlit run app/dashboard.py

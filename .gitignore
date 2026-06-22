@@ -77,6 +77,15 @@ models/*_best.keras
 .env
 frontend/.env.local
 
+# Vercel
+.vercel/
+
+# OpenVINO / NPU debug logs
+kernel.errors.txt
+
+# Training checkpoints (inference uses OpenVINO IR)
+models/*.weights.h5
+
 # Node / Next.js
 frontend/node_modules/
 frontend/.next/
