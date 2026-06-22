@@ -42,7 +42,7 @@ export function HypnogramChart({
       <h3 className="mb-3 text-sm font-semibold text-[var(--dps-primary)]">
         {title}
       </h3>
-      <div className="h-[280px] w-full rounded-lg border border-[var(--dps-border)] bg-[var(--dps-surface-2)] p-2">
+      <div className="dps-chart-wrap h-[280px] w-full rounded-lg border border-[var(--dps-border)] bg-[var(--dps-surface-2)] p-2">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
             <CartesianGrid

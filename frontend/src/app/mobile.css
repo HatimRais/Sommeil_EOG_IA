@@ -1,0 +1,331 @@
+/**
+ * Styles téléphone uniquement — max-width 639px (< breakpoint sm Tailwind).
+ * Tablette et desktop : aucune règle ici ne s'applique.
+ */
+
+.dps-mobile-topbar,
+.dps-mobile-backdrop,
+.dps-mobile-menu-btn {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .dps-api-status {
+    display: none !important;
+  }
+
+  /* ── Barre supérieure mobile ── */
+  .dps-mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    height: 3.25rem;
+    padding: 0 0.75rem;
+    padding-top: env(safe-area-inset-top, 0);
+    border-bottom: 1px solid var(--dps-border);
+    background: var(--dps-surface);
+    z-index: 40;
+  }
+
+  .dps-mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-shrink: 0;
+    border-radius: 0.625rem;
+    border: 1px solid var(--dps-border);
+    background: var(--dps-surface-2);
+    color: var(--dps-primary);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dps-mobile-topbar-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--dps-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dps-mobile-topbar-status {
+    flex-shrink: 0;
+    font-size: 0.625rem;
+    font-weight: 600;
+  }
+
+  /* ── Layout : contenu plein écran, sidebar en tiroir ── */
+  .dps-app {
+    flex-direction: column;
+  }
+
+  .dps-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    width: min(100vw, 20rem);
+    max-height: 100dvh;
+    border-right: 1px solid var(--dps-sb-border);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+    transform: translateX(-105%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .dps-sidebar.dps-sidebar-open {
+    transform: translateX(0);
+  }
+
+  .dps-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .dps-main {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .dps-main-inner {
+    padding: 0.75rem !important;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0)) !important;
+  }
+
+  /* ── Header principal ── */
+  .dps-main header {
+    margin-bottom: 0.75rem !important;
+    padding: 0.875rem 1rem !important;
+    border-radius: 0.75rem !important;
+  }
+
+  .dps-main header h1 {
+    font-size: 0.9375rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .dps-main header p {
+    font-size: 0.6875rem !important;
+  }
+
+  /* ── Alertes API / erreurs ── */
+  .dps-main .dps-alert-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.875rem !important;
+    font-size: 0.8125rem !important;
+  }
+
+  .dps-main .dps-alert-banner code {
+    display: block;
+    word-break: break-all;
+    white-space: pre-wrap;
+    margin-top: 0.25rem;
+  }
+
+  /* ── Welcome landing ── */
+  .dps-main .dps-welcome-hero {
+    padding: 1.25rem !important;
+    border-radius: 1rem !important;
+  }
+
+  .dps-main .dps-welcome-hero h1 {
+    font-size: 1.25rem !important;
+  }
+
+  .dps-main .dps-welcome-hero p {
+    font-size: 0.8125rem !important;
+  }
+
+  .dps-main .dps-feature-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  .dps-main .dps-workflow-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* ── Cartes patient / métriques ── */
+  .dps-patient-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.875rem !important;
+  }
+
+  .dps-metrics-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.625rem !important;
+  }
+
+  .dps-patient-grid > div,
+  .dps-metrics-grid > div {
+    min-width: 0;
+  }
+
+  .dps-patient-grid .truncate {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: break-word;
+  }
+
+  /* ── Onglets résultats ── */
+  .dps-results-tabs {
+    gap: 0.25rem !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 0.25rem;
+  }
+
+  .dps-results-tabs button {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0.5rem 0.625rem !important;
+    scroll-snap-align: start;
+    font-size: 0.6875rem !important;
+    gap: 0.375rem !important;
+  }
+
+  .dps-results-tabs .dps-tab-label-short {
+    display: inline;
+  }
+
+  .dps-results-tabs .dps-tab-label-full {
+    display: none;
+  }
+
+  /* ── Graphiques ── */
+  .dps-chart-wrap {
+    height: 220px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dps-chart-wrap .recharts-wrapper {
+    min-width: 280px;
+  }
+
+  /* ── Loader CNN ── */
+  .cnn-loader {
+    margin-bottom: 1rem !important;
+    border-radius: 1rem !important;
+  }
+
+  .cnn-loader-inner {
+    padding: 1rem 0.5rem !important;
+  }
+
+  .cnn-arch-svg {
+    width: 100%;
+    height: auto;
+    max-height: 160px;
+  }
+
+  /* ── Tables ── */
+  .dps-main table {
+    font-size: 0.75rem !important;
+  }
+
+  .dps-main .dps-table-scroll {
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  /* ── Boutons tactiles ── */
+  .dps-main button,
+  .dps-sidebar button,
+  .dps-sidebar select,
+  .dps-sidebar input[type="file"] {
+    min-height: 2.75rem;
+  }
+
+  .dps-export-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .dps-export-row button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ── Sidebar contenu ── */
+  .dps-sidebar > div:first-child {
+    padding: 1rem !important;
+  }
+
+  .dps-sidebar .dps-sidebar-scroll {
+    padding: 1rem !important;
+  }
+
+  .dps-sidebar > div:last-child {
+    padding: 1rem !important;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0)) !important;
+  }
+
+  .dps-sidebar-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-left: auto;
+    border-radius: 0.5rem;
+    border: 1px solid var(--dps-sb-border);
+    background: var(--dps-sb-surface);
+    color: var(--dps-sb-text);
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Interprétation clinique ── */
+  .dps-interpretation-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+
+  /* ── Definition lists technique ── */
+  .dps-dl-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.125rem !important;
+  }
+
+  .dps-dl-row dd {
+    text-align: left;
+    word-break: break-word;
+  }
+
+  /* ── Espacement sections résultats ── */
+  .dps-results-section {
+    gap: 1.25rem !important;
+  }
+}
+
+/* Labels onglets : version longue par défaut (tablette + desktop) */
+.dps-tab-label-short {
+  display: none;
+}
+
+.dps-sidebar-close {
+  display: none;
+}

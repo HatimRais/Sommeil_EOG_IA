@@ -40,7 +40,7 @@ export function WelcomeLanding() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--dps-header-from)] to-[var(--dps-header-to)] p-8 text-white shadow-[var(--dps-shadow-lg)] md:p-12"
+        className="dps-welcome-hero relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--dps-header-from)] to-[var(--dps-header-to)] p-8 text-white shadow-[var(--dps-shadow-lg)] md:p-12"
       >
         <div className="absolute -right-8 -top-8 h-48 w-48 rounded-full bg-white/5" />
         <div className="absolute -bottom-12 -left-12 h-64 w-64 rounded-full bg-white/5" />
@@ -67,7 +67,7 @@ export function WelcomeLanding() {
         </div>
       </motion.div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="dps-feature-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map(({ icon: Icon, title, desc }, i) => (
           <motion.div
             key={title}
@@ -85,7 +85,7 @@ export function WelcomeLanding() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="dps-workflow-grid grid gap-6 lg:grid-cols-3">
         <div className="rounded-xl border border-[var(--dps-border)] bg-[var(--dps-surface)] p-6 shadow-[var(--dps-shadow)] lg:col-span-2">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[var(--dps-primary)]">
             <Stethoscope className="h-5 w-5" />

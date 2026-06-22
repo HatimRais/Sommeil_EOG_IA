@@ -13,6 +13,7 @@ import {
   Play,
   Sun,
   Upload,
+  X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -22,9 +23,18 @@ interface SidebarProps {
   onError: (msg: string) => void;
   onLoading: (loading: boolean) => void;
   loading: boolean;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ onAnalyze, onError, onLoading, loading }: SidebarProps) {
+export function Sidebar({
+  onAnalyze,
+  onError,
+  onLoading,
+  loading,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [devices, setDevices] = useState<DeviceOption[]>([]);
@@ -79,13 +89,15 @@ export function Sidebar({ onAnalyze, onError, onLoading, loading }: SidebarProps
   ] as const;
 
   return (
-    <aside className="flex w-full shrink-0 flex-col border-r border-[var(--dps-sb-border)] bg-[var(--dps-sb-bg)] lg:h-full lg:min-h-0 lg:w-80">
+    <aside
+      className={`dps-sidebar flex w-full shrink-0 flex-col border-r border-[var(--dps-sb-border)] bg-[var(--dps-sb-bg)] lg:h-full lg:min-h-0 lg:w-80${mobileOpen ? " dps-sidebar-open" : ""}`}
+    >
       <div className="border-b border-[var(--dps-sb-border)] p-5">
         <div className="flex items-center gap-3">
           <span className="text-3xl" aria-hidden>
             ⚕️
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold tracking-tight text-[var(--dps-sb-text)]">
               DeepSleep AI
             </h2>
@@ -93,6 +105,14 @@ export function Sidebar({ onAnalyze, onError, onLoading, loading }: SidebarProps
               Polysomnography Lab · v2.0
             </p>
           </div>
+          <button
+            type="button"
+            className="dps-sidebar-close"
+            aria-label="Fermer le menu"
+            onClick={onMobileClose}
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {["EOG", "AASM 5", "OpenVINO"].map((b) => (
@@ -106,7 +126,7 @@ export function Sidebar({ onAnalyze, onError, onLoading, loading }: SidebarProps
         </div>
       </div>
 
-      <div className="flex-1 space-y-5 overflow-y-auto p-5">
+      <div className="dps-sidebar-scroll flex-1 space-y-5 overflow-y-auto p-5">
         {/* Theme */}
         <section>
           <h3 className="mb-2 text-[0.72rem] font-bold uppercase tracking-widest text-[var(--dps-sb-accent)]">
