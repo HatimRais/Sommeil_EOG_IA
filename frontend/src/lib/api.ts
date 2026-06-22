@@ -1,8 +1,9 @@
 import type { AnalysisResult, DeviceOption, PatientRecord } from "@/types/analysis";
 
-// Production Railway : même origine (FastAPI sert le frontend statique).
-// Dev local : définir NEXT_PUBLIC_API_URL=http://localhost:8000 dans .env.local
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+// Dev local : proxy vers FastAPI:8000 si pas de variable explicite
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
+  (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000" : "");
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {

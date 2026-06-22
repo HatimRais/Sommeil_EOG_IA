@@ -65,8 +65,8 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
             }`}
           >
             <Icon className="h-4 w-4" />
-            <span className="dps-tab-label-full">{label}</span>
-            <span className="dps-tab-label-short">{short}</span>
+            <span className="dps-tab-full">{label}</span>
+            <span className="dps-tab-short">{short}</span>
           </button>
         ))}
       </div>

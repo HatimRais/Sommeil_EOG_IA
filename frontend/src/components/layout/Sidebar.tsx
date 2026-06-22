@@ -23,8 +23,10 @@ interface SidebarProps {
   onError: (msg: string) => void;
   onLoading: (loading: boolean) => void;
   loading: boolean;
-  mobileOpen?: boolean;
-  onMobileClose?: () => void;
+  /** Mode tiroir téléphone (MobileChrome uniquement) */
+  phoneDrawer?: boolean;
+  open?: boolean;
+  onPhoneClose?: () => void;
 }
 
 export function Sidebar({
@@ -32,8 +34,9 @@ export function Sidebar({
   onError,
   onLoading,
   loading,
-  mobileOpen = false,
-  onMobileClose,
+  phoneDrawer = false,
+  open = false,
+  onPhoneClose,
 }: SidebarProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -88,9 +91,12 @@ export function Sidebar({
     { id: "system", icon: Monitor, label: "Système" },
   ] as const;
 
+  const drawerClass =
+    phoneDrawer && open ? " dps-phone-drawer is-open" : phoneDrawer ? " dps-phone-drawer" : "";
+
   return (
     <aside
-      className={`dps-sidebar flex w-full shrink-0 flex-col border-r border-[var(--dps-sb-border)] bg-[var(--dps-sb-bg)] lg:h-full lg:min-h-0 lg:w-80${mobileOpen ? " dps-sidebar-open" : ""}`}
+      className={`flex w-full shrink-0 flex-col border-r border-[var(--dps-sb-border)] bg-[var(--dps-sb-bg)] lg:h-full lg:min-h-0 lg:w-80${drawerClass}`}
     >
       <div className="border-b border-[var(--dps-sb-border)] p-5">
         <div className="flex items-center gap-3">
@@ -105,14 +111,16 @@ export function Sidebar({
               Polysomnography Lab · v2.0
             </p>
           </div>
-          <button
-            type="button"
-            className="dps-sidebar-close"
-            aria-label="Fermer le menu"
-            onClick={onMobileClose}
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {phoneDrawer && (
+            <button
+              type="button"
+              className="dps-phone-drawer-close"
+              aria-label="Fermer le menu"
+              onClick={onPhoneClose}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {["EOG", "AASM 5", "OpenVINO"].map((b) => (
@@ -127,7 +135,6 @@ export function Sidebar({
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto p-5">
-        {/* Theme */}
         <section>
           <h3 className="mb-2 text-[0.72rem] font-bold uppercase tracking-widest text-[var(--dps-sb-accent)]">
             Apparence
@@ -152,7 +159,6 @@ export function Sidebar({
           )}
         </section>
 
-        {/* Device */}
         <section>
           <h3 className="mb-2 text-[0.72rem] font-bold uppercase tracking-widest text-[var(--dps-sb-accent)]">
             Accélération matérielle
@@ -173,7 +179,6 @@ export function Sidebar({
           </div>
         </section>
 
-        {/* Data source */}
         <section>
           <h3 className="mb-2 text-[0.72rem] font-bold uppercase tracking-widest text-[var(--dps-sb-accent)]">
             Données patient
