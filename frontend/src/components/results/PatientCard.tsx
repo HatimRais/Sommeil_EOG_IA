@@ -22,7 +22,7 @@ export function PatientCard({ patient }: { patient: PatientInfo }) {
 
   return (
     <Card accent className="animate-fade-in-up">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8 dps-patient-grid">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
         {fields.map(({ icon: Icon, label, value }) => (
           <div key={label} className="min-w-0">
             <div className="mb-1 flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-wide text-[var(--dps-text-muted)]">
@@ -51,7 +51,7 @@ export function MetricsGrid({
       <h2 className="mb-4 border-b-2 border-[var(--dps-primary-mid)] pb-2 text-sm font-bold uppercase tracking-wide text-[var(--dps-primary)]">
         Métriques cliniques du sommeil
       </h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 dps-metrics-grid">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {metrics.map((m) => (
           <Card key={m.label} className="!p-4 transition-shadow hover:shadow-[var(--dps-shadow-lg)]">
             <div className="text-[0.72rem] font-medium text-[var(--dps-text-muted)]">

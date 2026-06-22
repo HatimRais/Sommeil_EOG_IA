@@ -53,7 +53,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
 
   return (
     <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-      <div className="dps-results-tabs mb-4 flex gap-1 overflow-x-auto border-b border-[var(--dps-border)] pb-px">
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-[var(--dps-border)] pb-px">
         {TABS.map(({ id, label, short, icon: Icon }) => (
           <button
             key={id}
@@ -98,7 +98,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
               <h3 className="mb-4 text-sm font-semibold text-[var(--dps-primary)]">
                 Durées par stade
               </h3>
-              <div className="dps-table-scroll overflow-x-auto">
+              <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-[var(--dps-border)] text-left text-[var(--dps-text-muted)]">
@@ -157,7 +157,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
                   <h3 className="mb-3 text-sm font-semibold text-[var(--dps-primary)]">
                     Performance par stade
                   </h3>
-                  <div className="dps-table-scroll overflow-x-auto">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-[var(--dps-border)] text-left text-[var(--dps-text-muted)]">
@@ -214,7 +214,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
                 {result.interpretation.map((item, i) => (
                   <div
                     key={i}
-                    className="dps-interpretation-item flex items-start gap-3 rounded-lg border-l-[3px] bg-[var(--dps-surface-2)] p-3"
+                    className="flex items-start gap-3 rounded-lg border-l-[3px] bg-[var(--dps-surface-2)] p-3"
                     style={{
                       borderLeftColor:
                         item.severity === "norm"
@@ -231,7 +231,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
               </div>
             </Card>
             <Card>
-              <div className="dps-export-row mb-4 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-[var(--dps-primary)]">
                   Résumé quantitatif
                 </h3>
@@ -243,7 +243,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
                   Exporter CSV
                 </button>
               </div>
-              <div className="dps-table-scroll overflow-x-auto">
+              <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-[var(--dps-border)] text-left text-[var(--dps-text-muted)]">
@@ -297,7 +297,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
                   "Total époques": result.patient.nEpochs,
                   Durée: result.patient.durationFormatted,
                 }).map(([k, v]) => (
-                  <div key={k} className="dps-dl-row flex justify-between gap-4 border-b border-[var(--dps-border-soft)] py-1.5">
+                  <div key={k} className="flex justify-between gap-4 border-b border-[var(--dps-border-soft)] py-1.5">
                     <dt className="text-[var(--dps-text-muted)]">{k}</dt>
                     <dd className="font-medium text-[var(--dps-text)]">{v}</dd>
                   </div>
@@ -321,7 +321,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
                   Débit: `${result.engine.throughput} époques/s`,
                   "Confiance moyenne": `${result.engine.meanConfidence} %`,
                 }).map(([k, v]) => (
-                  <div key={k} className="dps-dl-row flex justify-between gap-4 border-b border-[var(--dps-border-soft)] py-1.5">
+                  <div key={k} className="flex justify-between gap-4 border-b border-[var(--dps-border-soft)] py-1.5">
                     <dt className="text-[var(--dps-text-muted)]">{k}</dt>
                     <dd className="font-medium text-[var(--dps-text)]">{v}</dd>
                   </div>

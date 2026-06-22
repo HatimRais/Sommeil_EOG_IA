@@ -126,7 +126,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="dps-sidebar-scroll flex-1 space-y-5 overflow-y-auto p-5">
+      <div className="flex-1 space-y-5 overflow-y-auto p-5">
         {/* Theme */}
         <section>
           <h3 className="mb-2 text-[0.72rem] font-bold uppercase tracking-widest text-[var(--dps-sb-accent)]">
