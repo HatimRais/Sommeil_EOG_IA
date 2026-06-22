@@ -1,123 +1,94 @@
-# Déploiement DeepSleep AI — Railway (tout-en-un, modèle SICAM)
+# Déploiement DeepSleep AI — Railway (tout-en-un)
 
-Une seule URL Railway : interface Next.js + API FastAPI interne + modèles OpenVINO **dans l'image Docker**.
+**Une seule URL** : FastAPI sert l'API (`/api/*`) **et** le frontend Next.js (`/`).
 
 ```
-Navigateur → Next.js (port public PORT) → proxy /api/* → FastAPI 127.0.0.1:8001
+Navigateur → uvicorn :PORT
+              ├── GET /           → frontend/out/index.html
+              ├── GET /api/health → JSON API
+              └── POST /api/analyze → inférence EOG
 ```
 
-> **Note :** le projet SICAM utilise le même schéma sur Railway (pas Vercel pour l'API).
-> Vercel ne convient pas à OpenVINO + MNE + fichiers EDF ~50 Mo.
+Le build compile le frontend en fichiers statiques (`frontend/out`) inclus dans l'image.
 
 ---
 
-## Étape 1 — Vérifier les fichiers versionnés
-
-Ces fichiers doivent être dans Git (déjà inclus) :
-
-```
-models/sleep_model_npu.xml
-models/sleep_model_npu.bin
-data/raw/Patient_*_Signal.edf
-data/raw/Patient_*_Labels.edf
-```
+## Étape 1 — Pousser sur GitHub
 
 ```powershell
-git status
 git push origin main
 ```
+
+Fichiers requis dans Git : `models/sleep_model_npu.*`, `data/raw/*.edf`
 
 ---
 
 ## Étape 2 — Déployer sur Railway
 
 1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub**
-2. Repo **Sommeil_EOG_IA** (racine du dépôt)
-3. Railway utilise le `Dockerfile` automatiquement
-4. **Settings → Networking → Generate Domain**
-
-| Port | Rôle | Exposé sur Internet ? |
-|------|------|------------------------|
-| `PORT` (ex. 8080) | Site Next.js | **Oui** ← domaine Railway |
-| 8001 | API FastAPI interne | **Non** |
-
-> ⚠️ Ne pas exposer le port **8001** — vous obtiendriez un **504**.
-
-### Ressources recommandées
-
-| Ressource | Minimum |
-|-----------|---------|
-| RAM | **2 Go** (OpenVINO + MNE + EDF) |
-| CPU | 1–2 vCPU |
+2. Repo **Sommeil_EOG_IA** — **Root Directory = racine** (vide)
+3. **Settings → Build** :
+   - Builder : **Dockerfile** (recommandé) ou laisser Railpack + `nixpacks.toml`
+   - **Start Command** : *(vide — utiliser le CMD du Dockerfile)*
+4. **Settings → Resources** : RAM **2 Go**
+5. **Networking → Generate Domain**
 
 ### Variables d'environnement
 
-**Aucune variable obligatoire.** Railway injecte `PORT` automatiquement.
+**Aucune obligatoire.**
 
-| Variable | Défaut | Rôle |
-|----------|--------|------|
-| `PORT` | auto | Port public Next.js |
-| `DEEPSLEEP_INTERNAL_API_PORT` | `8001` | Port API interne |
-| `DEEPSLEEP_INFERENCE_URL` | `http://127.0.0.1:8001` | URL pour les routes proxy Next.js |
+| Variable | Quand |
+|----------|-------|
+| `PORT` | Injecté automatiquement par Railway |
+
+> ⚠️ Si vous voyez `{"detail":"Not Found"}` sur `/` : le frontend n'a pas été buildé.
+> Vérifiez les logs de **build** (pas seulement deploy) — cherchez `npm run build`.
+> Supprimez toute **Start Command** custom du type `uvicorn ...` sans build frontend.
 
 ---
 
 ## Étape 3 — Vérifier
 
-1. Ouvrez `https://VOTRE-URL.up.railway.app`
-2. Badge **« API connectée »** (vert)
-3. Lancez une analyse sur `Patient_01`
-4. Export CSV → colonnes séparées dans Excel FR
+| Test | Résultat attendu |
+|------|------------------|
+| `https://VOTRE-URL/` | Interface DeepSleep AI (HTML) |
+| `https://VOTRE-URL/api/health` | `{"status":"ok","service":"DeepSleep AI"}` |
+| Analyse Patient_01 | Hypnogramme affiché |
 
-```powershell
-curl https://VOTRE-URL.up.railway.app/api/health
+Logs de démarrage corrects :
 ```
-
-Réponse attendue : `{"status":"ok","service":"DeepSleep AI"}`
+INFO: Uvicorn running on http://0.0.0.0:8080
+INFO: "GET / HTTP/1.1" 200 OK
+INFO: "GET /api/health HTTP/1.1" 200 OK
+```
 
 ---
 
-## Développement local
+## Dev local
 
 ```powershell
-# Terminal 1 — API FastAPI
+# Terminal 1
 pip install -r requirements-prod.txt -r requirements-api.txt
+cd frontend && npm run build && cd ..
 uvicorn src.api.main:app --reload --port 8000
 
-# Terminal 2 — Next.js (proxy vers 8000)
-cd frontend
-cp .env.local.example .env.local
-npm install
-npm run dev
+# Ouvrir http://localhost:8000
 ```
 
-Les routes `frontend/src/app/api/*` proxy vers `http://127.0.0.1:8000` — même schéma qu'en production.
+Ou dev frontend séparé :
+```powershell
+# Terminal 1 : uvicorn port 8000
+# Terminal 2 : cd frontend && cp .env.local.example .env.local && npm run dev
+```
 
 ---
 
 ## Dépannage
 
-| Symptôme | Solution |
-|----------|----------|
-| Build échoue `COPY models/` | Vérifiez que `sleep_model_npu.xml/.bin` sont commités |
-| Crash « Modèles introuvables » | Logs build : modèles absents de l'image |
-| OOM | Augmentez la RAM à 2 Go |
-| Healthcheck timeout | Premier boot ~2–3 min (OpenVINO + MNE) |
-| **504 Bad Gateway** | Domaine pointé sur **8001** au lieu de **PORT** |
-| API hors ligne en local | Terminal 1 : uvicorn sur port 8000 |
-
----
-
-## Architecture (identique à SICAM)
-
-```
-┌──────────────────────────────────────────────┐
-│  Railway — un seul conteneur Docker          │
-│                                              │
-│  Browser → Next.js :PORT                     │
-│              ↓ /api/health, /api/analyze…    │
-│            FastAPI 127.0.0.1:8001            │
-│              ↓                               │
-│         OpenVINO + MNE + data/raw            │
-└──────────────────────────────────────────────┘
-```
+| Symptôme | Cause | Solution |
+|----------|-------|----------|
+| `{"detail":"Not Found"}` sur `/` | API seule, pas de `frontend/out` | Builder Dockerfile ou nixpacks avec `npm run build` |
+| Logs : uvicorn seul, pas de build npm | Railpack sans phase build | Utiliser Dockerfile ou `nixpacks.toml` |
+| Start Command custom | Écrase le Dockerfile CMD | Vider Start Command dans Settings |
+| OOM | RAM insuffisante | 2 Go minimum |
+| 504 | Mauvais port exposé | Domaine sur PORT public (8080), pas un port interne |

@@ -218,3 +218,41 @@ async def export_csv(
                 os.unlink(p)
             except OSError:
                 pass
+
+
+def _mount_frontend(app: FastAPI) -> None:
+    """Sert le frontend Next.js exporté (frontend/out) sur / — une seule URL Railway."""
+    static_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "out")
+    )
+    if not os.path.isdir(static_dir):
+        return
+
+    from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
+
+    index_html = os.path.join(static_dir, "index.html")
+    next_dir = os.path.join(static_dir, "_next")
+
+    if os.path.isdir(next_dir):
+        app.mount("/_next", StaticFiles(directory=next_dir), name="next-assets")
+
+    @app.get("/", include_in_schema=False)
+    async def spa_root():
+        if os.path.isfile(index_html):
+            return FileResponse(index_html, media_type="text/html")
+        raise HTTPException(503, "Frontend non buildé (frontend/out manquant)")
+
+    @app.get("/{asset_path:path}", include_in_schema=False)
+    async def spa_fallback(asset_path: str):
+        if asset_path.startswith("api/") or asset_path in ("docs", "openapi.json", "redoc"):
+            raise HTTPException(404, detail="Not Found")
+        file_path = os.path.join(static_dir, asset_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        if os.path.isfile(index_html):
+            return FileResponse(index_html, media_type="text/html")
+        raise HTTPException(404, detail="Not Found")
+
+
+_mount_frontend(app)

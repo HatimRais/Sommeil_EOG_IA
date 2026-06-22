@@ -273,25 +273,18 @@ Ouvrir [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## ☁️ Déploiement Railway (recommandé — modèle SICAM)
+## ☁️ Déploiement Railway (recommandé)
 
-**Une seule URL** : Next.js + FastAPI + OpenVINO dans **un conteneur Docker** (identique au projet SICAM).
-
-```
-Navigateur → Next.js (PORT public) → proxy /api/* → FastAPI 127.0.0.1:8001
-```
+**Une seule URL** : FastAPI sert l'interface (`/`) et l'API (`/api/*`) — frontend compilé en statique.
 
 | Étape | Action |
 |---|---|
-| 1 | [railway.app](https://railway.app) → Deploy from GitHub → repo racine |
-| 2 | Generate Domain (port **PORT**, pas 8001) |
-| 3 | RAM **2 Go** recommandée |
-| 4 | **Aucune variable d'environnement obligatoire** |
+| 1 | [railway.app](https://railway.app) → Deploy from GitHub → racine du repo |
+| 2 | Builder : **Dockerfile** · Start Command : *(vide)* |
+| 3 | RAM **2 Go** · Generate Domain |
+| 4 | Aucune variable d'environnement obligatoire |
 
-Guide complet : [`DEPLOY.md`](DEPLOY.md)
-
-> **Vercel** ne convient pas à ce projet (OpenVINO + MNE + EDF ~50 Mo, timeout serverless).
-> SICAM utilise aussi **Railway**, pas Vercel, pour l'API + frontend.
+Guide : [`DEPLOY.md`](DEPLOY.md)
 
 ---
 

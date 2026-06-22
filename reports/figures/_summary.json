@@ -1,0 +1,5 @@
+{
+  "patient01_epochs": 2650,
+  "patient01_accuracy": 0.9230188679245283,
+  "patient01_channel": "EOG horizontal"
+}

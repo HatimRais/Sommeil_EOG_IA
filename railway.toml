@@ -1,7 +1,18 @@
-# Projet tout-en-un — Next.js (public) + FastAPI interne (127.0.0.1:8001)
+# Production Railway : FastAPI sert le frontend statique (frontend/out)
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+watchPatterns = [
+  "src/**",
+  "frontend/**",
+  "models/**",
+  "data/raw/**",
+  "scripts/**",
+  "requirements-prod.txt",
+  "requirements-api.txt",
+  "Dockerfile",
+  "nixpacks.toml",
+]
 
 [deploy]
 healthcheckPath = "/api/health"

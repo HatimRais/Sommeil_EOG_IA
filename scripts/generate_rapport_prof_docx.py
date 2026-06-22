@@ -1,367 +1,434 @@
 """
-Génère un rapport Word (synthèse projet) à la racine du dépôt.
-Usage (depuis la racine du projet) :
-  .\\.venv\\Scripts\\python.exe scripts/generate_rapport_prof_docx.py
+Génère le rapport Word du projet Sommeil_EOG_IA (≤ 15 pages), avec figures réelles
+(signaux EOG, hypnogrammes, matrice de confusion, courbes) et métriques mesurées.
+
+Prérequis : lancer d'abord les assets (figures) si absents :
+  .\.venv\Scripts\python.exe scripts/make_report_assets.py
+Puis :
+  .\.venv\Scripts\python.exe scripts/generate_rapport_prof_docx.py
+
 Dépendance : pip install python-docx
 """
 from __future__ import annotations
 
+import json
 import os
+import subprocess
 import sys
-import tempfile
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 from docx.shared import Inches, Pt, RGBColor
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+FIG_DIR = os.path.join(ROOT, "reports", "figures")
 OUT_NAME = "Rapport_Projet_Sommeil_EOG_IA.docx"
 
+PRIMARY = RGBColor(12, 74, 110)
+GREY = RGBColor(71, 85, 105)
 
-def _add_title(doc: Document, text: str, level: int = 1) -> None:
+
+def fig(name: str) -> str:
+    return os.path.join(FIG_DIR, name)
+
+
+def load_metrics(name: str) -> dict:
+    with open(os.path.join(ROOT, "models", name), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def add_heading(doc, text, level=1):
     h = doc.add_heading(text, level=level)
-    h.runs[0].font.color.rgb = RGBColor(12, 74, 110)
+    for r in h.runs:
+        r.font.color.rgb = PRIMARY
+    return h
 
 
-def _add_table(doc: Document, headers: list[str], rows: list[list[str]]) -> None:
+def add_para(doc, text, size=10.5, italic=False, align=None, space_after=6):
+    p = doc.add_paragraph()
+    r = p.add_run(text)
+    r.font.size = Pt(size)
+    r.italic = italic
+    if align is not None:
+        p.alignment = align
+    p.paragraph_format.space_after = Pt(space_after)
+    return p
+
+
+def add_bullets(doc, items, size=10.5):
+    for it in items:
+        p = doc.add_paragraph(style="List Bullet")
+        r = p.add_run(it)
+        r.font.size = Pt(size)
+        p.paragraph_format.space_after = Pt(2)
+
+
+def _shade_cell(cell, hex_color):
+    tcpr = cell._tc.get_or_add_tcPr()
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), hex_color)
+    tcpr.append(shd)
+
+
+def add_table(doc, headers, rows, widths=None, size=9.5):
     t = doc.add_table(rows=1 + len(rows), cols=len(headers))
     t.style = "Table Grid"
-    hdr = t.rows[0].cells
-    for i, h in enumerate(headers):
-        hdr[i].text = h
-        for p in hdr[i].paragraphs:
-            for r in p.runs:
-                r.bold = True
-                r.font.size = Pt(10)
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    for i, htxt in enumerate(headers):
+        cell = t.rows[0].cells[i]
+        cell.text = ""
+        _shade_cell(cell, "0C4A6E")
+        run = cell.paragraphs[0].add_run(htxt)
+        run.bold = True
+        run.font.size = Pt(size)
+        run.font.color.rgb = RGBColor(255, 255, 255)
     for ri, row in enumerate(rows):
-        cells = t.rows[ri + 1].cells
         for ci, val in enumerate(row):
-            cells[ci].text = str(val)
-            for p in cells[ci].paragraphs:
-                for r in p.runs:
-                    r.font.size = Pt(10)
+            cell = t.rows[ri + 1].cells[ci]
+            cell.text = ""
+            if ri % 2 == 1:
+                _shade_cell(cell, "EAF1F6")
+            run = cell.paragraphs[0].add_run(str(val))
+            run.font.size = Pt(size)
+    if widths:
+        for row in t.rows:
+            for ci, w in enumerate(widths):
+                row.cells[ci].width = Inches(w)
+    return t
 
 
-def _pipeline_figure(path: str) -> None:
-    fig, ax = plt.subplots(figsize=(11.5, 2.8))
-    ax.set_xlim(0, 11.5)
-    ax.set_ylim(0, 1.6)
-    ax.axis("off")
-    boxes = [
-        (0.15, 0.35, "Fichiers\nEDF"),
-        (1.85, 0.35, "Lecture\nMNE-Python"),
-        (3.55, 0.35, "Prétraitement\nEOG"),
-        (5.25, 0.35, "Découpage\népoques 30 s"),
-        (6.95, 0.35, "Inférence\nOpenVINO IR"),
-        (8.65, 0.35, "Dashboard\nStreamlit"),
-    ]
-    w, h = 1.55, 0.95
-    for i, (x, y, txt) in enumerate(boxes):
-        ax.add_patch(
-            mpatches.FancyBboxPatch(
-                (x, y),
-                w,
-                h,
-                boxstyle="round,pad=0.04",
-                facecolor="#E8F0F6",
-                edgecolor="#0C4A6E",
-                linewidth=1.2,
-            )
-        )
-        ax.text(x + w / 2, y + h / 2, txt, ha="center", va="center", fontsize=8.5, weight="600")
-        if i < len(boxes) - 1:
-            ax.annotate(
-                "",
-                xy=(boxes[i + 1][0] - 0.05, y + h / 2),
-                xytext=(x + w + 0.05, y + h / 2),
-                arrowprops=dict(arrowstyle="->", color="#334155", lw=1.4),
-            )
-    fig.text(0.5, 0.08, "Chaîne de traitement — Sommeil_EOG_IA", ha="center", fontsize=9, color="#475569")
-    fig.savefig(path, dpi=160, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+def add_figure(doc, path, width=6.0, caption=None):
+    if not os.path.isfile(path):
+        add_para(doc, f"[figure manquante : {os.path.basename(path)}]", italic=True)
+        return
+    doc.add_picture(path, width=Inches(width))
+    doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if caption:
+        c = doc.add_paragraph()
+        c.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = c.add_run(caption)
+        r.italic = True
+        r.font.size = Pt(9)
+        r.font.color.rgb = GREY
+        c.paragraph_format.space_after = Pt(8)
 
 
-def _architecture_figure(path: str) -> None:
-    """Schéma simplifié CNN 1D (blocs)."""
-    fig, ax = plt.subplots(figsize=(10, 2.2))
-    ax.set_xlim(0, 10)
-    ax.set_ylim(0, 1.2)
-    ax.axis("off")
-    layers = [
-        (0.1, 0.35, "Entrée\n3000×1"),
-        (1.35, 0.35, "Conv1D\n+ BN + Pool"),
-        (2.85, 0.35, "Conv1D\n+ BN + Pool"),
-        (4.35, 0.35, "Conv1D\n+ BN + Pool"),
-        (5.85, 0.35, "Conv1D\n+ BN + Pool"),
-        (7.35, 0.35, "GAP +\nDense"),
-        (8.75, 0.35, "Softmax\n5 classes"),
-    ]
-    w = 1.1
-    h = 0.55
-    for i, (x, y, t) in enumerate(layers):
-        ax.add_patch(
-            mpatches.Rectangle((x, y), w, h, facecolor="#DBEAFE", edgecolor="#1E40AF", linewidth=1)
-        )
-        ax.text(x + w / 2, y + h / 2, t, ha="center", va="center", fontsize=7.5, weight="600")
-        if i < len(layers) - 1:
-            ax.annotate(
-                "",
-                xy=(layers[i + 1][0] - 0.02, y + h / 2),
-                xytext=(x + w + 0.02, y + h / 2),
-                arrowprops=dict(arrowstyle="->", color="#64748B", lw=1),
-            )
-    fig.text(0.5, 0.06, "Architecture indicative — CNN 1D NPU (détail dans architecture.py)", ha="center", fontsize=8, color="#64748B")
-    fig.savefig(path, dpi=160, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+def pct(x):
+    return f"{x*100:.1f} %"
 
 
-def build_document() -> str:
+def build():
+    cnn = load_metrics("metrics_holdout_test.json")
+    bilstm = load_metrics("metrics_test_bilstm.json")
+    bilstm_val = load_metrics("metrics_val_bilstm.json")
+    try:
+        with open(os.path.join(FIG_DIR, "_summary.json"), encoding="utf-8") as f:
+            demo = json.load(f)
+    except FileNotFoundError:
+        demo = {"patient01_epochs": 2650, "patient01_accuracy": 0.923, "patient01_channel": "EOG horizontal"}
+
     doc = Document()
+    style = doc.styles["Normal"]
+    style.font.name = "Calibri"
+    style.font.size = Pt(10.5)
     for s in doc.sections:
-        s.top_margin = Pt(56)
-        s.bottom_margin = Pt(56)
-        s.left_margin = Pt(72)
-        s.right_margin = Pt(72)
+        s.top_margin = Inches(0.7)
+        s.bottom_margin = Inches(0.7)
+        s.left_margin = Inches(0.85)
+        s.right_margin = Inches(0.85)
 
-    # --- Page de titre ---
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("Rapport de projet\n")
-    r.bold = True
-    r.font.size = Pt(22)
-    r.font.color.rgb = RGBColor(12, 74, 110)
-    r = p.add_run("Classification automatique des stades du sommeil\n")
-    r.bold = True
-    r.font.size = Pt(16)
-    r = p.add_run("à partir du signal EOG (électro-oculographie)\n")
-    r.font.size = Pt(14)
+    # ---------------- Page de titre ----------------
     doc.add_paragraph()
+    title = doc.add_paragraph()
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = title.add_run("Classification automatique des stades du sommeil\npar intelligence artificielle à partir du signal EOG")
+    r.bold = True
+    r.font.size = Pt(20)
+    r.font.color.rgb = PRIMARY
+    sub = doc.add_paragraph()
+    sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = sub.add_run("Projet Sommeil_EOG_IA — Dashboard clinique « DeepSleep AI »")
+    r.font.size = Pt(13)
+    r.font.color.rgb = GREY
+    add_figure(doc, fig("fig_pipeline.png"), width=6.4)
     meta = doc.add_paragraph()
     meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    meta.add_run("Projet : Sommeil_EOG_IA (DeepSleep AI)\n").font.size = Pt(11)
-    meta.add_run("Nomenclature clinique : AASM — 5 classes\n").font.size = Pt(11)
-    meta.add_run("\nDocument généré automatiquement à des fins pédagogiques.\n").italic = True
+    for line in (
+        "Apprentissage profond (CNN 1D) · Inférence accélérée OpenVINO (NPU / GPU / CPU)",
+        "Corpus Sleep-EDF Expanded (PhysioNet) · Nomenclature AASM 5 stades",
+        "Rapport de synthèse",
+    ):
+        rr = meta.add_run(line + "\n")
+        rr.font.size = Pt(11)
     doc.add_page_break()
 
-    # --- 1. Résumé ---
-    _add_title(doc, "1. Résumé exécutif", 1)
-    doc.add_paragraph(
-        "Ce projet met en œuvre une chaîne complète — des données polysomnographiques "
-        "(fichiers EDF) jusqu’à une interface web — pour estimer automatiquement les stades "
-        "du sommeil à partir d’un canal EOG, selon la norme AASM (cinq classes : éveil, N1, N2, N3, REM). "
-        "Un réseau de neurones convolutif 1D est entraîné puis exporté au format OpenVINO (IR FP16) "
-        "afin de tirer parti de l’accélération matérielle (NPU Intel AI Boost, GPU intégré ou CPU). "
-        "Une application Streamlit permet le chargement des enregistrements, l’inférence, "
-        "la visualisation des hypnogrammes et un rapport clinique synthétique."
-    )
-
-    # --- 2. Contexte ---
-    _add_title(doc, "2. Contexte et problématique", 1)
-    doc.add_paragraph(
-        "La polysomnographie (PSG) enregistre plusieurs signaux physiologiques pendant une nuit. "
-        "Le scoring manuel des stades par un expert est long et coûteux. "
-        "L’EOG capture les mouvements oculaires caractéristiques (notamment en sommeil paradoxal, REM). "
-        "L’objectif du projet est de démontrer un pipeline reproductible : prétraitement du signal, "
-        "apprentissage supervisé, déploiement optimisé et outil de visualisation pour le technologue ou le chercheur."
-    )
-
-    # --- 3. Objectifs ---
-    _add_title(doc, "3. Objectifs", 1)
-    for t in (
-        "Charger et synchroniser signaux et annotations au format EDF.",
-        "Prétraiter le canal EOG (rééchantillonnage, filtrage, normalisation).",
-        "Entraîner un classificateur par époques de 30 secondes (5 classes AASM).",
-        "Exporter un modèle compatible NPU via OpenVINO (FP16, forme d’entrée fixe).",
-        "Proposer une interface interactive (dashboard) pour l’analyse et l’export des résultats.",
-    ):
-        doc.add_paragraph(t, style="List Bullet")
-
-    # --- 4. Stades AASM ---
-    _add_title(doc, "4. Codification des stades (AASM)", 1)
-    _add_table(
+    # ---------------- 1. Résumé ----------------
+    add_heading(doc, "1. Résumé exécutif")
+    add_para(
         doc,
-        ["Code", "Libellé", "Description courte"],
-        [
-            ["0", "W (Wake)", "Éveil"],
-            ["1", "N1", "Sommeil léger / transition"],
-            ["2", "N2", "Sommeil léger consolidé"],
-            ["3", "N3", "Sommeil profond (SWS ; N3 et N4 historiques fusionnés)"],
-            ["4", "REM", "Sommeil paradoxal"],
-        ],
+        "Ce projet met en œuvre une chaîne complète, des enregistrements polysomnographiques bruts "
+        "(fichiers EDF) jusqu'à une application web clinique, pour estimer automatiquement les stades du "
+        "sommeil à partir d'un unique canal d'électro-oculographie (EOG), selon la norme AASM "
+        "(cinq classes : éveil W, N1, N2, N3 et sommeil paradoxal REM). Un réseau de neurones convolutif "
+        "1D est entraîné sur le corpus Sleep-EDF Expanded (182 sujets, 419 170 époques de 30 s), puis "
+        "exporté au format OpenVINO IR FP16 afin de tirer parti de l'accélération matérielle (NPU Intel "
+        "AI Boost, GPU intégré ou CPU). Évalué sur un jeu de test indépendant de 27 sujets jamais vus à "
+        f"l'entraînement, le modèle atteint une exactitude de {pct(cnn['accuracy'])}, un F1 macro de "
+        f"{cnn['f1_macro']:.3f} et un coefficient kappa de Cohen de {cnn['cohen_kappa']:.3f} "
+        "(accord « substantiel » avec l'expert). Une interface Streamlit permet le chargement des "
+        "enregistrements, l'inférence en temps réel, la visualisation de l'hypnogramme et la production "
+        "d'un rapport clinique synthétique.",
     )
-    doc.add_paragraph()
 
-    # --- 5. Technologies ---
-    _add_title(doc, "5. Technologies et bibliothèques", 1)
-    doc.add_paragraph(
-        "Le tableau suivant liste les principaux composants logiciels du dépôt "
-        "(versions indicatives ; se référer à requirements.txt pour le déploiement du dashboard)."
-    )
-    _add_table(
+    # ---------------- 2. Contexte ----------------
+    add_heading(doc, "2. Contexte et problématique")
+    add_para(
         doc,
-        ["Technologie", "Rôle dans le projet"],
-        [
-            ["Python 3.12 (recommandé)", "Langage principal ; voir runtime.txt pour le cloud."],
-            ["Streamlit", "Interface web du laboratoire (sidebar, onglets, métriques, graphiques)."],
-            ["MNE-Python 1.6", "Lecture des EDF, annotations, extraction du canal EOG."],
-            ["NumPy / SciPy / Pandas", "Tableaux, statistiques, tableaux de résultats."],
-            ["Matplotlib", "Hypnogrammes, camemberts d’architecture, matrices de confusion."],
-            ["OpenVINO (2024.x+)", "Inférence accélérée sur NPU / GPU / CPU (modèle IR .xml + .bin)."],
-            ["TensorFlow / Keras (requirements-train.txt)", "Entraînement et export des modèles .keras → OpenVINO."],
-            ["scikit-learn", "Métriques et évaluation (evaluate.py)."],
-        ],
+        "La polysomnographie (PSG) enregistre plusieurs signaux physiologiques durant une nuit de sommeil "
+        "(EEG, EOG, EMG, etc.). Le « scoring » manuel consiste à attribuer un stade de sommeil à chaque "
+        "fenêtre de 30 secondes ; réalisé par un expert, il est long, coûteux et sujet à variabilité "
+        "inter-juges. L'EOG capture les mouvements oculaires, particulièrement informatifs pour distinguer "
+        "l'éveil (clignements, mouvements rapides) et le sommeil paradoxal (mouvements oculaires rapides "
+        "caractéristiques). L'objectif est de démontrer un pipeline reproductible et déployable : "
+        "prétraitement du signal, apprentissage supervisé, optimisation pour accélérateur matériel et "
+        "restitution visuelle à destination du technologue ou du chercheur.",
     )
-    doc.add_paragraph()
+    add_heading(doc, "Objectifs du projet", level=2)
+    add_bullets(doc, [
+        "Charger et synchroniser signaux et annotations au format EDF (MNE-Python).",
+        "Prétraiter le canal EOG : rééchantillonnage 100 Hz, filtrage 0,5–35 Hz, normalisation z-score.",
+        "Entraîner un classificateur d'époques de 30 s sur les 5 classes AASM, avec un découpage par sujet.",
+        "Exporter un modèle compatible NPU via OpenVINO (FP16, forme d'entrée fixe 64×3000×1).",
+        "Fournir un tableau de bord interactif pour l'analyse, la comparaison à l'expert et l'export des résultats.",
+    ])
 
-    # --- 6. Structure du dépôt ---
-    _add_title(doc, "6. Organisation du dépôt", 1)
-    _add_table(
+    # ---------------- 3. Données ----------------
+    add_heading(doc, "3. Données et nomenclature")
+    add_para(
         doc,
-        ["Chemin / fichier", "Description"],
+        "Le corpus principal est Sleep-EDF Expanded (PhysioNet), complété par quatre enregistrements "
+        "locaux (Patient_01, 02, 11, 12). Après chargement et synchronisation, 182 sujets exploitables "
+        "fournissent 419 170 époques de 30 s échantillonnées à 100 Hz (soit 3000 points par époque). "
+        "La nomenclature AASM regroupe les anciens stades N3 et N4 en une seule classe de sommeil profond.",
+    )
+    add_table(
+        doc,
+        ["Code", "Stade", "Description clinique"],
         [
-            ["app/dashboard.py", "Application Streamlit : pipeline, inférence, onglets cliniques."],
-            ["app/ui_theme.py", "Thème couleur centralisé (clair / sombre / système)."],
-            ["src/preprocessing.py", "Rééchantillonnage 100 Hz, filtre FIR 0,5–35 Hz, z-score, clip ±3σ."],
-            ["src/data_loader.py", "Parsing des annotations EDF → vecteur de labels par époque."],
-            ["src/architecture.py", "Modèles CNN+Bi-LSTM (CPU) et CNN 1D pur (NPU-compatible)."],
-            ["src/train.py / train_npu.py", "Scripts d’entraînement et export IR."],
-            ["src/evaluate.py", "Évaluation quantitative vs vérité terrain."],
-            ["models/", "Poids Keras et modèle OpenVINO IR FP16 (entrée [64, 3000, 1])."],
-            ["data/raw/", "Enregistrements exemples (*_Signal.edf, *_Labels.edf)."],
-            [".streamlit/config.toml", "Thème Streamlit de base."],
+            ["0", "W", "Éveil — clignements et mouvements oculaires volontaires"],
+            ["1", "N1", "Endormissement / sommeil léger, transition"],
+            ["2", "N2", "Sommeil léger consolidé (fuseaux, complexes K)"],
+            ["3", "N3", "Sommeil profond à ondes lentes (N3 + N4 fusionnés)"],
+            ["4", "REM", "Sommeil paradoxal — mouvements oculaires rapides"],
         ],
+        widths=[0.7, 0.9, 4.6],
     )
-    doc.add_paragraph()
-
-    # --- 7. Schéma pipeline ---
-    _add_title(doc, "7. Schéma du pipeline de bout en bout", 1)
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-        tmp_path = tmp.name
-    try:
-        _pipeline_figure(tmp_path)
-        doc.add_picture(tmp_path, width=Inches(6.2))
-    finally:
-        if os.path.isfile(tmp_path):
-            os.remove(tmp_path)
-    last = doc.paragraphs[-1]
-    last.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    doc.add_paragraph(
-        "Chaque époque correspond à 30 s à 100 Hz soit 3000 échantillons par canal. "
-        "Le modèle déployé dans le dashboard attend un tenseur de forme (batch, 3000, 1) ; "
-        "l’inférence est traitée par lots (batch 64) pour optimiser le débit."
+    add_para(
+        doc,
+        "Les stades sont fortement déséquilibrés : l'éveil et le N2 dominent, tandis que le N1 est rare "
+        "et difficile à distinguer (transition courte). Ce déséquilibre, illustré ci-dessous, est compensé "
+        "à l'entraînement par une pondération des classes (class_weight).",
+        space_after=4,
     )
+    add_figure(doc, fig("fig_class_distribution.png"), width=5.6,
+               caption="Figure 1 — Répartition des 64 113 époques du jeu de test sur les 5 stades AASM.")
 
-    # --- 8. Prétraitement ---
-    _add_title(doc, "8. Prétraitement du signal EOG", 1)
-    _add_table(
+    # ---------------- 4. Prétraitement ----------------
+    add_heading(doc, "4. Prétraitement du signal EOG")
+    add_para(
+        doc,
+        "Le prétraitement (module src/preprocessing.py) homogénéise les enregistrements avant l'inférence : "
+        "rééchantillonnage à 100 Hz, sélection automatique du premier canal dont le nom contient « EOG », "
+        "filtrage passe-bande FIR 0,5–35 Hz pour éliminer la dérive lente et le bruit haute fréquence, puis "
+        "normalisation z-score par enregistrement et écrêtage des valeurs aberrantes à ±3 écarts-types. "
+        "La figure 2 montre l'effet du prétraitement sur une époque, et la figure 3 met en évidence des "
+        "morphologies distinctes selon le stade — base sur laquelle le réseau apprend à discriminer.",
+    )
+    add_table(
         doc,
         ["Étape", "Paramètres"],
         [
-            ["Rééchantillonnage", "100 Hz (aligné sur l’entrée du modèle)."],
-            ["Sélection du canal", "Premier canal dont le nom contient « EOG » (insensible à la casse)."],
-            ["Filtrage", "Passe-bande FIR 0,5 Hz – 35 Hz (MNE)."],
-            ["Normalisation", "Z-score par enregistrement ; limitation des valeurs à ±3 écarts-types."],
+            ["Rééchantillonnage", "100 Hz (aligné sur l'entrée du modèle)"],
+            ["Sélection du canal", "Premier canal contenant « EOG » (insensible à la casse)"],
+            ["Filtrage", "Passe-bande FIR 0,5 – 35 Hz (MNE-Python)"],
+            ["Normalisation", "Z-score par enregistrement, puis écrêtage à ±3 σ"],
+            ["Découpage", "Époques de 30 s = 3000 points → tenseur (N, 3000, 1)"],
         ],
+        widths=[1.7, 4.5],
     )
-    doc.add_paragraph()
+    add_figure(doc, fig("fig_eog_signal.png"), width=5.9,
+               caption="Figure 2 — Signal EOG brut (haut) et après prétraitement (bas) sur une époque de 30 s.")
+    add_figure(doc, fig("fig_eog_stages.png"), width=5.5,
+               caption="Figure 3 — Morphologie typique du signal EOG prétraité pour chacun des 5 stades (Patient_01).")
 
-    # --- 9. Modèles ---
-    _add_title(doc, "9. Modèles d’apprentissage", 1)
-    doc.add_paragraph(
-        "Deux architectures sont définies dans architecture.py : une variante CNN + Bi-LSTM "
-        "(meilleure expressivité temporelle mais opérations non supportées sur le NPU Intel ciblé) "
-        "et une CNN 1D pure (convolutions, normalisation par lots, max-pooling, global average pooling, dense) "
-        "compatible avec l’export OpenVINO et l’exécution sur NPU."
-    )
-    _add_table(
+    # ---------------- 5. Modèle ----------------
+    add_heading(doc, "5. Architecture du modèle")
+    add_para(
         doc,
-        ["Critère", "CNN + Bi-LSTM", "CNN 1D (NPU)"],
-        [
-            ["Cible d’exécution", "CPU / GPU (LSTM)", "NPU / GPU / CPU (IR)"],
-            ["Contrainte matérielle", "Ops récurrentes", "Pas de LSTM — convolutions uniquement"],
-            ["Perte / optimisation", "sparse_categorical_crossentropy, Adam", "idem"],
-        ],
+        "Deux architectures ont été développées (src/architecture.py). Une variante CNN + Bi-LSTM offre "
+        "une bonne modélisation temporelle mais utilise des opérations récurrentes (Loop, ReverseSequence) "
+        "non supportées par le NPU Intel ciblé. Une variante CNN 1D pure — quatre blocs convolutifs "
+        "(Conv1D + BatchNorm + MaxPooling) suivis d'un global average pooling et de couches denses — n'emploie "
+        "que des opérations compatibles NPU et constitue le modèle déployé. Elle compte environ 455 000 "
+        "paramètres pour une entrée statique de forme (64, 3000, 1).",
     )
-    doc.add_paragraph()
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp2:
-        arch_path = tmp2.name
-    try:
-        _architecture_figure(arch_path)
-        doc.add_picture(arch_path, width=Inches(6.0))
-    finally:
-        if os.path.isfile(arch_path):
-            os.remove(arch_path)
-    last = doc.paragraphs[-1]
-    last.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    doc.add_paragraph()
-
-    # --- 10. Dashboard ---
-    _add_title(doc, "10. Fonctionnalités du dashboard", 1)
-    for t in (
-        "Choix du périphérique d’inférence OpenVINO (NPU, GPU, CPU, AUTO).",
-        "Import EDF signal ; base locale data/raw ; hypnogramme expert optionnel.",
-        "Métriques cliniques (TST, efficacité du sommeil, latences, % de stades, etc.).",
-        "Onglets : hypnogramme IA (et expert), architecture du sommeil, accord IA vs expert, rapport, technique.",
-        "Export CSV époque par époque.",
-    ):
-        doc.add_paragraph(t, style="List Bullet")
-
-    # --- 11. Performances indicatives ---
-    _add_title(doc, "11. Performances indicatives (README du projet)", 1)
-    doc.add_paragraph(
-        "Les chiffres ci-dessous sont donnés à titre illustratif sur une configuration type "
-        "(Intel Core Ultra 5 125U) ; ils dépendent du matériel et de la charge."
-    )
-    _add_table(
+    add_figure(doc, fig("fig_architecture.png"), width=6.3,
+               caption="Figure 4 — Architecture du CNN 1D compatible NPU (détail dans src/architecture.py).")
+    add_table(
         doc,
-        ["Périphérique", "Débit approximatif (époques/s)"],
+        ["Bloc", "Couches", "Sortie"],
         [
-            ["NPU (Intel AI Boost)", "~5 650"],
-            ["GPU intégré", "~2 150"],
-            ["CPU", "~1 100"],
+            ["1", "Conv1D(64, k=11) + BN + MaxPool(4)", "(750, 64)"],
+            ["2", "Conv1D(128, k=7) + BN + MaxPool(4)", "(187, 128)"],
+            ["3", "Conv1D(256, k=5) + BN + MaxPool(4)", "(46, 256)"],
+            ["4", "Conv1D(256, k=3) + BN + MaxPool(2)", "(23, 256)"],
+            ["Tête", "GlobalAvgPool1D → Dense(128) → Dense(5, softmax)", "(5,)"],
         ],
-    )
-    doc.add_paragraph(
-        "Précision rapportée sur un petit jeu de validation (4 patients) : environ 88,4 % "
-        "pour la variante CNN 1D (voir README.md du dépôt)."
+        widths=[0.7, 4.2, 1.3],
     )
 
-    # --- 12. Limites ---
-    _add_title(doc, "12. Limites et perspectives", 1)
-    for t in (
-        "Un seul canal EOG ne remplace pas une PSG complète pour le diagnostic clinique.",
-        "Les performances varient selon la population, la qualité du signal et les pathologies.",
-        "L’outil sert d’aide à la décision / démonstration pédagogique ; le scoring expert reste la référence.",
-        "Pistes : multi-canaux, calibration sur plus de sujets, explicabilité (Grad-CAM), déploiement serveur.",
-    ):
-        doc.add_paragraph(t, style="List Bullet")
+    # ---------------- 6. Entraînement ----------------
+    add_heading(doc, "6. Protocole d'entraînement et d'évaluation")
+    add_para(
+        doc,
+        "Le point méthodologique central est le découpage par sujet (src/splits.py) : les enregistrements "
+        "sont répartis en 127 sujets d'entraînement (297 012 époques), 28 sujets de validation (58 045 "
+        "époques) et 27 sujets de test (64 113 époques). Aucune époque d'un sujet de test n'apparaît à "
+        "l'entraînement ni à la validation, ce qui évite toute fuite de données et donne une estimation "
+        "honnête de la généralisation. La fonction de perte est l'entropie croisée catégorielle, "
+        "l'optimiseur Adam, avec pondération des classes et arrêt anticipé sur le F1 macro de validation. "
+        "L'entraînement a été mené sur GPU (Kaggle P100). La figure 5 montre la progression du F1 macro "
+        "et de l'exactitude en validation.",
+    )
+    add_figure(doc, fig("fig_training_curve.png"), width=5.8,
+               caption="Figure 5 — Courbes de validation (CNN 1D NPU). Le meilleur modèle (F1 ≈ 0,724) est conservé.")
 
-    # --- 13. Conclusion ---
-    _add_title(doc, "13. Conclusion", 1)
-    doc.add_paragraph(
-        "Le projet Sommeil_EOG_IA illustre une chaîne moderne d’apprentissage automatique appliquée "
-        "au sommeil : données standardisées (EDF / AASM), prétraitement reproductible, modèle profond "
-        "déployable sur accélérateur via OpenVINO, et restitution visuelle pour l’utilisateur. "
-        "Il constitue une base solide pour un exposé ou un rapport de fin d’études en traitement du signal "
-        "et intelligence artificielle."
+    # ---------------- 7. Résultats ----------------
+    add_heading(doc, "7. Résultats quantitatifs")
+    add_para(
+        doc,
+        "Les performances ci-dessous sont calculées sur le jeu de test hold-out (27 sujets, "
+        "64 113 époques) via src/evaluate_holdout.py. Le CNN 1D déployé dépasse la variante CNN + Bi-LSTM "
+        "sur l'ensemble des métriques globales, tout en restant compatible NPU.",
+    )
+    add_table(
+        doc,
+        ["Métrique", "CNN 1D (NPU) — déployé", "CNN + Bi-LSTM (référence)"],
+        [
+            ["Exactitude (accuracy)", pct(cnn["accuracy"]), pct(bilstm["accuracy"])],
+            ["F1 macro", f"{cnn['f1_macro']:.3f}", f"{bilstm['f1_macro']:.3f}"],
+            ["F1 pondéré", f"{cnn['f1_weighted']:.3f}", f"{bilstm['f1_weighted']:.3f}"],
+            ["Kappa de Cohen", f"{cnn['cohen_kappa']:.3f}", f"{bilstm['cohen_kappa']:.3f}"],
+        ],
+        widths=[2.1, 2.2, 2.2],
+    )
+    add_para(
+        doc,
+        "L'analyse par stade (figure 6) confirme une excellente détection de l'éveil et du sommeil profond, "
+        "de bonnes performances en N2 et REM, et la difficulté attendue sur le N1 — stade de transition "
+        "minoritaire et ambigu, y compris pour les experts humains. La matrice de confusion (figure 7) "
+        "montre que les erreurs résiduelles concernent surtout les confusions N1↔N2 et N1↔REM.",
+    )
+    add_figure(doc, fig("fig_f1_comparison.png"), width=5.8,
+               caption="Figure 6 — Score F1 par stade : CNN 1D (NPU) vs CNN + Bi-LSTM (test hold-out).")
+    add_figure(doc, fig("fig_confusion_cnn.png"), width=4.5,
+               caption="Figure 7 — Matrice de confusion normalisée par ligne (CNN 1D NPU, test hold-out).")
+    add_table(
+        doc,
+        ["Stade", "Précision", "Rappel", "F1", "Support"],
+        [
+            [s,
+             f"{cnn['per_class'][s].get('precision', 0):.2f}",
+             f"{cnn['per_class'][s]['recall']:.2f}",
+             f"{cnn['per_class'][s]['f1']:.2f}",
+             f"{cnn['per_class'][s]['support']}"]
+            for s in ["W", "N1", "N2", "N3", "REM"]
+        ],
+        widths=[1.0, 1.2, 1.1, 1.0, 1.2],
     )
 
-    _add_title(doc, "Références logicielles", 1)
-    doc.add_paragraph(
-        "MNE-Python (https://mne.tools/), Streamlit (https://streamlit.io/), "
-        "OpenVINO (https://docs.openvino.ai/), TensorFlow/Keras (https://www.tensorflow.org/)."
+    # ---------------- 8. Démonstration ----------------
+    add_heading(doc, "8. Démonstration sur un cas réel (Patient_01)")
+    add_para(
+        doc,
+        f"Sur l'enregistrement de démonstration Patient_01 ({demo['patient01_epochs']} époques, canal "
+        f"« {demo['patient01_channel']} »), réservé au jeu de test, l'hypnogramme prédit par l'IA reproduit "
+        f"fidèlement la structure du sommeil scorée par l'expert, avec une concordance de "
+        f"{pct(demo['patient01_accuracy'])}. On retrouve l'alternance des cycles de sommeil, la présence de "
+        "sommeil profond en début de nuit et l'apparition progressive du sommeil paradoxal.",
+    )
+    add_figure(doc, fig("fig_hypnogram.png"), width=6.1,
+               caption="Figure 8 — Hypnogramme prédit par l'IA (haut) vs scoring expert de référence (bas), Patient_01.")
+
+    # ---------------- 9. Déploiement ----------------
+    add_heading(doc, "9. Déploiement et application")
+    add_para(
+        doc,
+        "Le modèle Keras est exporté en OpenVINO IR FP16 (scripts/export_cnn_openvino.py) : deux fichiers "
+        "légers (sleep_model_npu.xml ≈ 56 ko, sleep_model_npu.bin ≈ 0,9 Mo). OpenVINO sélectionne "
+        "automatiquement l'accélérateur disponible (NPU, GPU intégré ou CPU). Le dashboard Streamlit "
+        "(app/dashboard.py) charge uniquement ce modèle IR — sans TensorFlow à l'exécution — ce qui le rend "
+        "déployable sur Streamlit Community Cloud.",
+    )
+    add_table(
+        doc,
+        ["Périphérique", "Débit indicatif (époques/s)", "Remarque"],
+        [
+            ["NPU (Intel AI Boost)", "≈ 5 650", "×5,2 vs CPU — modèle IR FP16"],
+            ["GPU intégré", "≈ 2 150", "Modèle IR FP16"],
+            ["CPU", "≈ 1 100", "Repli universel (Cloud)"],
+        ],
+        widths=[2.0, 2.4, 2.2],
+    )
+    add_heading(doc, "Fonctionnalités du tableau de bord", level=2)
+    add_bullets(doc, [
+        "Choix du périphérique d'inférence OpenVINO (NPU / GPU / CPU / AUTO).",
+        "Import EDF (signal + hypnogramme expert optionnel) ou base d'exemples locale.",
+        "Hypnogramme IA, architecture du sommeil et comparaison IA vs expert.",
+        "Métriques cliniques : temps de sommeil total, efficacité, latences, pourcentages de stades.",
+        "Export des résultats époque par époque au format CSV.",
+    ])
+
+    # ---------------- 10. Conclusion ----------------
+    add_heading(doc, "10. Limites, perspectives et conclusion")
+    add_bullets(doc, [
+        "Un seul canal EOG ne remplace pas une PSG complète : l'outil est une aide à la décision, non un dispositif diagnostique.",
+        "Le stade N1 reste le point faible (F1 ≈ 0,45) ; des pistes incluent une perte focale et l'ajout de contexte temporel.",
+        "Les performances dépendent de la population et de la qualité du signal ; une validation multicentrique serait nécessaire.",
+        "Perspectives : modèle multi-canaux, explicabilité (Grad-CAM), agrégation temporelle séquence-à-séquence.",
+    ])
+    add_para(
+        doc,
+        "Le projet Sommeil_EOG_IA illustre une chaîne de bout en bout moderne et reproductible : données "
+        "standardisées (EDF / AASM), prétraitement robuste, modèle profond évalué rigoureusement par "
+        "découpage sujet, optimisation matérielle via OpenVINO et restitution clinique interactive. "
+        "Le modèle déployé atteint une concordance « substantielle » avec l'expert "
+        f"(kappa = {cnn['cohen_kappa']:.3f}, exactitude = {pct(cnn['accuracy'])}), démontrant la "
+        "faisabilité d'un scoring automatique du sommeil à partir d'un capteur unique et peu coûteux.",
     )
 
-    out_path = os.path.join(ROOT, OUT_NAME)
-    doc.save(out_path)
-    return out_path
+    add_heading(doc, "Références et outils", level=2)
+    add_para(
+        doc,
+        "Corpus : Sleep-EDF Expanded, PhysioNet (physionet.org). Bibliothèques : MNE-Python (mne.tools), "
+        "TensorFlow / Keras (tensorflow.org), OpenVINO (docs.openvino.ai), scikit-learn, Matplotlib, "
+        "Streamlit (streamlit.io). Code source complet et notebook fournis avec ce rapport.",
+        size=9.5, italic=True,
+    )
+
+    out = os.path.join(ROOT, OUT_NAME)
+    doc.save(out)
+    return out
 
 
 if __name__ == "__main__":
-    os.chdir(ROOT)
-    if ROOT not in sys.path:
-        sys.path.insert(0, ROOT)
-    path = build_document()
-    print("Document créé :", path)
+    if not os.path.isfile(fig("fig_hypnogram.png")):
+        print("Figures absentes — génération via make_report_assets.py …")
+        subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "make_report_assets.py")], check=True)
+    path = build()
+    print("Rapport créé :", path)

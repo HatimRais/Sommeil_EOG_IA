@@ -1,11 +1,11 @@
 # DeepSleep AI — Frontend Next.js
 
-Interface web avec **proxy API intégré** (modèle SICAM).
+Export statique (`output: "export"`) servi par FastAPI en production.
 
-## Local
+## Dev local (hot reload)
 
-```bash
-# Terminal 1 (racine)
+```powershell
+# Terminal 1
 uvicorn src.api.main:app --reload --port 8000
 
 # Terminal 2
@@ -14,10 +14,7 @@ npm install
 npm run dev
 ```
 
-Les routes `src/app/api/*` proxy vers FastAPI sur le port 8000.
-
 ## Production (Railway)
 
-Un seul service Docker à la racine du repo — voir [`DEPLOY.md`](../DEPLOY.md).
-
-Aucune variable d'environnement obligatoire sur Railway.
+Le build `npm run build` produit `frontend/out/`, copié dans l'image Docker.
+FastAPI sert `/` et `/api/*` sur la même URL — voir [`DEPLOY.md`](../DEPLOY.md).
