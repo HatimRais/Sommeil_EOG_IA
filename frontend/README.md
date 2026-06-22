@@ -1,8 +1,8 @@
 # DeepSleep AI — Frontend Next.js
 
-Interface web du projet **Sommeil_EOG_IA** (classification des stades du sommeil par EOG).
+Interface web du projet **Sommeil_EOG_IA**.
 
-## Développement local
+## Local
 
 ```bash
 cp .env.local.example .env.local
@@ -10,15 +10,16 @@ npm install
 npm run dev
 ```
 
-Le backend FastAPI doit tourner sur le port 8000 (voir README à la racine).
+Backend requis sur le port 8000 (voir README racine).
 
-## Déploiement Vercel
+## Railway
 
-1. Importer le dépôt GitHub sur [vercel.com/new](https://vercel.com/new)
-2. **Root Directory** → `frontend` (obligatoire, monorepo)
-3. **Environment Variables** → `NEXT_PUBLIC_API_URL` = URL HTTPS de votre API FastAPI
-4. Deploy
+Ce dossier est le **service 2** du déploiement Railway.
 
-> Le backend Python (OpenVINO + MNE) ne peut pas tourner sur Vercel. Hébergez-le séparément (Railway, Render, VM…) et configurez CORS côté API (`CORS_ORIGINS` ou regex `*.vercel.app` déjà activée).
+| Paramètre Railway | Valeur |
+|---|---|
+| Root Directory | `frontend` |
+| Dockerfile | `Dockerfile` |
+| Variable | `NEXT_PUBLIC_API_URL` = URL du service API |
 
-Voir le README racine pour le guide complet.
+Guide complet : [`docs/RAILWAY_DEPLOY.md`](../docs/RAILWAY_DEPLOY.md)
