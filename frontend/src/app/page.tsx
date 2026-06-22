@@ -134,7 +134,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden lg:flex-row">
+    <div className="flex h-dvh flex-row overflow-hidden">
       <Sidebar {...sidebarProps} />
       <MainContent result={result} loading={loading} error={error} apiOnline={apiOnline} />
     </div>

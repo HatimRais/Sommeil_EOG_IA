@@ -96,7 +96,7 @@ export function Sidebar({
 
   return (
     <aside
-      className={`flex w-full shrink-0 flex-col border-r border-[var(--dps-sb-border)] bg-[var(--dps-sb-bg)] lg:h-full lg:min-h-0 lg:w-80${drawerClass}`}
+      className={`flex h-full min-h-0 w-80 shrink-0 flex-col border-r border-[var(--dps-sb-border)] bg-[var(--dps-sb-bg)]${drawerClass}`}
     >
       <div className="border-b border-[var(--dps-sb-border)] p-5">
         <div className="flex items-center gap-3">
