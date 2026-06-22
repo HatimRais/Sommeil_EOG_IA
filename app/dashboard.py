@@ -375,7 +375,7 @@ def make_report_csv(preds, y_true=None) -> bytes:
             "OK" if (t >= 0 and p == t) else ("MISMATCH" if t >= 0 else "")
             for p, t in zip(preds, y_true)
         ]
-    return df.to_csv(index=False).encode("utf-8")
+    return df.to_csv(index=False, sep=";").encode("utf-8-sig")
 
 
 # ============================================================================

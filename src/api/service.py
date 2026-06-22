@@ -319,7 +319,7 @@ def build_interpretation(report: dict) -> List[dict]:
     return interp
 
 
-def make_report_csv(preds: np.ndarray, y_true: Optional[np.ndarray] = None) -> str:
+def make_report_csv(preds: np.ndarray, y_true: Optional[np.ndarray] = None) -> bytes:
     df = pd.DataFrame(
         {
             "epoch": np.arange(len(preds)),
@@ -338,7 +338,8 @@ def make_report_csv(preds: np.ndarray, y_true: Optional[np.ndarray] = None) -> s
             "OK" if (t >= 0 and p == t) else ("MISMATCH" if t >= 0 else "")
             for p, t in zip(preds, y_true)
         ]
-    return df.to_csv(index=False)
+    # Séparateur ; + BOM UTF-8 pour Excel (locale française Windows)
+    return df.to_csv(index=False, sep=";").encode("utf-8-sig")
 
 
 def list_patients() -> List[dict]:

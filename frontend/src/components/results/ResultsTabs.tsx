@@ -8,6 +8,7 @@ import {
 } from "@/components/charts/HypnogramChart";
 import { Card, StatusChip } from "@/components/ui/Card";
 import { STAGE_FULL } from "@/lib/theme";
+import { downloadExcelCsv } from "@/lib/utils";
 import type { AnalysisResult } from "@/types/analysis";
 import { motion } from "framer-motion";
 import {
@@ -34,7 +35,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
   const [active, setActive] = useState<TabId>("hypno");
 
   const downloadCsv = () => {
-    const rows = [
+    const rows: (string | number)[][] = [
       ["epoch", "time_hms", "stage_AI", "stage_expert", "agreement"],
       ...result.predictions.map((p, i) => {
         const expert = result.validation?.expertStages?.[i] ?? "";
@@ -47,14 +48,7 @@ export function ResultsTabs({ result }: { result: AnalysisResult }) {
         return [p.epoch, time, p.stage, expert, agree];
       }),
     ];
-    const csv = rows.map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${result.patient.id}_hypnogram.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadExcelCsv(`${result.patient.id}_hypnogram.csv`, rows);
   };
 
   return (
