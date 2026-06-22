@@ -1,4 +1,4 @@
-# Service API — racine du dépôt (Root Directory vide ou "/")
+# Projet tout-en-un — Next.js (public) + FastAPI interne (127.0.0.1:8001)
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"

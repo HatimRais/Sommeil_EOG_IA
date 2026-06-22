@@ -254,58 +254,48 @@ Ou sous Windows : `.\scripts\run_api.ps1`
 
 ```bash
 cd frontend
-cp .env.local.example .env.local   # ou copier manuellement
+cp .env.local.example .env.local
 npm install
 npm run dev
 ```
 
 Ouvrir [http://localhost:3000](http://localhost:3000)
 
+> Le frontend proxy les appels `/api/*` vers FastAPI (même schéma que SICAM).  
+> Terminal 1 : `uvicorn src.api.main:app --reload --port 8000` · Terminal 2 : `npm run dev`
+
 | Composant | Technologie |
 |---|---|
 | UI | Next.js 16 · React 19 · Tailwind CSS 4 |
 | Thème | next-themes (clair / sombre / système) — tokens `ui_theme.py` |
 | Graphiques | Recharts (hypnogramme, architecture, matrice) |
-| API | FastAPI · OpenVINO · MNE |
+| API | FastAPI · OpenVINO · MNE (proxy Next.js → FastAPI interne) |
 
 ---
 
-## ☁️ Déploiement Railway (recommandé)
+## ☁️ Déploiement Railway (recommandé — modèle SICAM)
 
-Hébergement **complet** sur [Railway](https://railway.app) : 2 services dans un même projet.
+**Une seule URL** : Next.js + FastAPI + OpenVINO dans **un conteneur Docker** (identique au projet SICAM).
 
-| Service | Dossier | Fichier |
-|---|---|---|
-| **API** (`deepsleep-api`) | Racine | `Dockerfile` |
-| **Frontend** (`deepsleep-web`) | `frontend/` | `frontend/Dockerfile` |
+```
+Navigateur → Next.js (PORT public) → proxy /api/* → FastAPI 127.0.0.1:8001
+```
 
-### Ordre de déploiement
-
-1. **API d’abord** → générer le domaine → copier l’URL (`/api/health` doit répondre)
-2. **Frontend ensuite** → variable `NEXT_PUBLIC_API_URL` = URL de l’API
-3. **CORS** sur l’API → `CORS_ORIGINS` = URL du frontend
-
-### Variables d’environnement
-
-**Service API :**
-
-| Variable | Exemple |
+| Étape | Action |
 |---|---|
-| `CORS_ORIGINS` | `https://deepsleep-web-production.up.railway.app` |
+| 1 | [railway.app](https://railway.app) → Deploy from GitHub → repo racine |
+| 2 | Generate Domain (port **PORT**, pas 8001) |
+| 3 | RAM **2 Go** recommandée |
+| 4 | **Aucune variable d'environnement obligatoire** |
 
-**Service Frontend :**
+Guide complet : [`DEPLOY.md`](DEPLOY.md)
 
-| Variable | Exemple |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://deepsleep-api-production.up.railway.app` |
-
-> `NEXT_PUBLIC_*` est compilé au build — redéployer le frontend si l’URL API change.
-
-Guide détaillé avec checklist : [`docs/RAILWAY_DEPLOY.md`](docs/RAILWAY_DEPLOY.md)
+> **Vercel** ne convient pas à ce projet (OpenVINO + MNE + EDF ~50 Mo, timeout serverless).
+> SICAM utilise aussi **Railway**, pas Vercel, pour l'API + frontend.
 
 ---
 
-## ☁️ Déploiement Vercel (alternative frontend seul)
+## ☁️ Déploiement Vercel (non recommandé)
 
 Le frontend Next.js se déploie sur **Vercel**. L'API Python (OpenVINO + MNE) doit être hébergée **séparément** — Railway, Render, Fly.io ou une VM.
 

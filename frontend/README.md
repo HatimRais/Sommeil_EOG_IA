@@ -1,25 +1,23 @@
 # DeepSleep AI — Frontend Next.js
 
-Interface web du projet **Sommeil_EOG_IA**.
+Interface web avec **proxy API intégré** (modèle SICAM).
 
 ## Local
 
 ```bash
+# Terminal 1 (racine)
+uvicorn src.api.main:app --reload --port 8000
+
+# Terminal 2
 cp .env.local.example .env.local
 npm install
 npm run dev
 ```
 
-Backend requis sur le port 8000 (voir README racine).
+Les routes `src/app/api/*` proxy vers FastAPI sur le port 8000.
 
-## Railway
+## Production (Railway)
 
-Ce dossier est le **service 2** du déploiement Railway.
+Un seul service Docker à la racine du repo — voir [`DEPLOY.md`](../DEPLOY.md).
 
-| Paramètre Railway | Valeur |
-|---|---|
-| Root Directory | `frontend` |
-| Dockerfile | `Dockerfile` |
-| Variable | `NEXT_PUBLIC_API_URL` = URL du service API |
-
-Guide complet : [`docs/RAILWAY_DEPLOY.md`](../docs/RAILWAY_DEPLOY.md)
+Aucune variable d'environnement obligatoire sur Railway.

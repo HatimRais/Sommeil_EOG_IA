@@ -1,6 +1,7 @@
 import type { AnalysisResult, DeviceOption, PatientRecord } from "@/types/analysis";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Même origine → routes Next.js /api/* (proxy vers FastAPI interne, modèle SICAM)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {

@@ -40,24 +40,15 @@ export default function DashboardPage() {
             <div className="mb-4 flex items-center gap-3 rounded-lg border border-[var(--dps-chip-alert-bd)] bg-[var(--dps-chip-alert-bg)] p-4 text-sm text-[var(--dps-chip-alert-fg)]">
               <WifiOff className="h-5 w-5 shrink-0" />
               <div>
-                <strong>API hors ligne.</strong>{" "}
-                {process.env.NEXT_PUBLIC_API_URL &&
-                !/localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_API_URL) ? (
-                  <>
-                    Impossible de joindre le backend à{" "}
-                    <code className="rounded bg-black/10 px-1.5 py-0.5 text-xs">
-                      {process.env.NEXT_PUBLIC_API_URL}
-                    </code>
-                    . Vérifiez que l&apos;API Python est déployée et accessible en HTTPS.
-                  </>
-                ) : (
-                  <>
-                    Démarrez le backend Python :{" "}
-                    <code className="rounded bg-black/10 px-1.5 py-0.5 text-xs">
-                      uvicorn src.api.main:app --reload --port 8000
-                    </code>
-                  </>
-                )}
+                <strong>API hors ligne.</strong> En local, démarrez le backend :{" "}
+                <code className="rounded bg-black/10 px-1.5 py-0.5 text-xs">
+                  uvicorn src.api.main:app --reload --port 8000
+                </code>
+                {" "}puis relancez{" "}
+                <code className="rounded bg-black/10 px-1.5 py-0.5 text-xs">
+                  npm run dev
+                </code>
+                {" "}dans <code className="text-xs">frontend/</code>.
               </div>
             </div>
           )}

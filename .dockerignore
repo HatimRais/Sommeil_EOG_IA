@@ -6,8 +6,10 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 
-# Frontend (service séparé)
-frontend/
+# Frontend build artifacts (rebuilt in Docker stage 1)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
 
 # Données lourdes non nécessaires en prod
 data/sleep-edf-database-expanded-1.0.0/
@@ -22,7 +24,7 @@ models/saved_model_temp/
 models/temp_export/
 models/_tmp_saved_model/
 
-# Artifacts / docs locaux
+# Artifacts locaux
 notebooks/
 reports/
 docs/
@@ -31,7 +33,6 @@ Rapport_Projet_Sommeil_EOG_IA.docx
 
 # Git / IDE
 .git/
-.gitignore
 .vscode/
 .idea/
 
@@ -39,6 +40,6 @@ Rapport_Projet_Sommeil_EOG_IA.docx
 *.log
 kernel.errors.txt
 
-# Streamlit legacy (non utilisé par l'API)
+# Streamlit legacy (non utilisé en prod)
 app/
 .streamlit/
