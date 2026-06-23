@@ -1,7 +1,7 @@
 # 🌙 Sommeil_EOG_IA — Classification automatique des stades du sommeil par IA
 
 Pipeline complet de **scoring polysomnographique** à partir d'un signal **EOG (électro-oculographique)**.
-Le projet entraîne deux variantes de modèle (**CNN + Bi-LSTM** pour la précision maximale, **CNN 1D pur** pour l'accélération matérielle), exporte la variante CNN en **OpenVINO IR FP16**, et fournit un **dashboard Streamlit** clinique (**DeepSleep AI**).
+Le projet entraîne deux variantes de modèle (**CNN + Bi-LSTM** pour la précision maximale, **CNN 1D pur** pour l'accélération matérielle), exporte la variante CNN en **OpenVINO IR FP16**, et fournit une interface clinique **DeepSleep AI** (**Next.js + FastAPI** ; dashboard Streamlit legacy conservé).
 
 Les 5 stades reconnus suivent la nomenclature AASM : `W` (éveil), `N1`, `N2`, `N3` (sommeil profond, N3+N4 fusionnés) et `REM`.
 

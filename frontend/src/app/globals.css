@@ -269,6 +269,71 @@ body {
   100% { transform: translateX(250%); }
 }
 
+@keyframes cnn-particle-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+@keyframes cnn-connector-pulse {
+  0%, 100% { stroke-opacity: 0.25; }
+  50% { stroke-opacity: 0.65; }
+}
+
+@keyframes cnn-scan-sweep {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(84px); }
+}
+
+@keyframes cnn-section-glow {
+  0%, 100% { stroke-opacity: 0.6; }
+  50% { stroke-opacity: 1; }
+}
+
+@keyframes cnn-softmax-rise {
+  0% { transform: scaleY(0.2); opacity: 0.3; }
+  100% { transform: scaleY(1); opacity: 0.75; }
+}
+
+@keyframes cnn-batch-progress {
+  0% { width: 8%; }
+  50% { width: 72%; }
+  100% { width: 8%; }
+}
+
+.cnn-particle {
+  animation: cnn-particle-glow 2.2s ease-in-out infinite;
+}
+
+.cnn-connector {
+  animation: cnn-connector-pulse 2s ease-in-out infinite;
+}
+
+.cnn-scan-line {
+  animation: cnn-scan-sweep 2.4s ease-in-out infinite;
+}
+
+.cnn-section-pulse {
+  animation: cnn-section-glow 2s ease-in-out infinite;
+}
+
+.cnn-softmax-bar {
+  transform-origin: center bottom;
+  transform-box: fill-box;
+  animation: cnn-softmax-rise 0.8s ease-out forwards;
+}
+
+.cnn-batch-fill {
+  animation: cnn-batch-progress 2.4s ease-in-out infinite;
+}
+
+.cnn-batch-active .cnn-batch-fill {
+  fill-opacity: 0.28;
+}
+
+.cnn-phase-dot-active {
+  box-shadow: 0 0 6px var(--dps-accent);
+}
+
 .cnn-ambient {
   animation: cnn-ambient-pulse 4s ease-in-out infinite;
   transform-origin: center;

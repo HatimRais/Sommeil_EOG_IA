@@ -85,6 +85,11 @@ kernel.errors.txt
 
 # Training checkpoints (inference uses OpenVINO IR)
 models/*.weights.h5
+models/*.keras
+
+# Generated report assets (scripts/generate_rapport_prof_docx.py, make_report_assets.py)
+Rapport_Projet_Sommeil_EOG_IA.docx
+reports/figures/
 
 # Node / Next.js
 frontend/node_modules/

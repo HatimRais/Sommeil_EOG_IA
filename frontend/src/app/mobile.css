@@ -75,13 +75,21 @@ html[data-dps-phone="true"] .dps-phone-drawer {
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
   transform: translateX(-105%);
   transition: transform 0.28s ease;
+  /* Fond opaque — le utility Tailwind seul peut être ignoré en fixed */
+  background-color: var(--dps-sb-bg) !important;
+  color: var(--dps-sb-text);
+  border-right: 1px solid var(--dps-sb-border);
+  pointer-events: none;
+  visibility: hidden;
 }
 
 html[data-dps-phone="true"] .dps-phone-drawer.is-open {
   transform: translateX(0);
+  pointer-events: auto;
+  visibility: visible;
 }
 
-html[data-dps-phone="true"] .dps-phone-drawer-close {
+html[data-dps-phone="true"] .dps-phone-drawer .dps-phone-drawer-close {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -92,6 +100,13 @@ html[data-dps-phone="true"] .dps-phone-drawer-close {
   border: 1px solid var(--dps-sb-border);
   background: var(--dps-sb-surface);
   color: var(--dps-sb-text);
+}
+
+/* Surfaces internes du tiroir — fonds explicites pour éviter la transparence */
+html[data-dps-phone="true"] .dps-phone-drawer select,
+html[data-dps-phone="true"] .dps-phone-drawer input[type="file"] {
+  background-color: var(--dps-sb-surface) !important;
+  color: var(--dps-sb-text) !important;
 }
 
 html[data-dps-phone="true"] .dps-phone-shell main .mx-auto {
